@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8">
+  <title>Lidar web tool</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" type="text/css" href="layui/css/layui.css" media="all">
+</head>
+
+<body>
+  <fieldset class="layui-elem-field layui-field-title" style="margin-top: 50px;">
+    <legend>雷达功能设置区域</legend>
+  </fieldset>
+
+  <div class="layui-tab layui-tab-card">
+    <ul class="layui-tab-title">
+      <li class="layui-this">设备运行</li>
+      <li>获取雷达参数</li>
+      <li>设置雷达网络参数</li>
+      <li>设置雷达硬件参数</li>
+      <li>雷达点云数据</li>
+      <li>其他</li>
+    </ul>
+    <div class="layui-tab-content">
+      <div class="layui-tab-item layui-show">
+        <blockquote class="layui-elem-quote layui-text" style="margin-top: 15px;">
+          说明介绍: 控制雷达的四种动作(初始为启动状态)
+        </blockquote>
+        <button type="button" id="LSTARH" class="layui-btn layui-btn-radius" onclick="action(id)">启动雷达</button>
+        <button type="button" id="LSTOPH" class="layui-btn layui-btn-radius" onclick="action(id)">关闭旋转</button>
+        <button type="button" id="LRESTH" class="layui-btn layui-btn-radius" onclick="action(id)">重启雷达</button>
+        <button type="button" id="LMEASH" class="layui-btn layui-btn-radius" onclick="action(id)">固定测距</button>
+      </div>
+      <div class="layui-tab-item">
+        <blockquote class="layui-elem-quote layui-text" style="margin-top: 15px;">
+          说明介绍: 网络款以及防区款可以获得所有的数据,串口款仅获得序列号
+        </blockquote>
+        <button type="button" class="layui-btn layui-btn-radius" onclick="getDevInfo()">重新获取</button>
+        <form class="layui-form">
+          <div class="layui-form-item">
+            <div class="layui-inline">
+              <label class="layui-form-label">型号</label>
+              <div class="layui-input-inline">
+                <input type="tel" id="NSP" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+            <div class="layui-inline">
+              <label class="layui-form-label">编号</label>
+              <div class="layui-input-inline">
+                <input type="text" id="DID" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+            <div class="layui-inline">
+              <label class="layui-form-label">序列号</label>
+              <div class="layui-input-inline">
+                <input type="text" id="UID" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">IP地址</label>
+              <div class="layui-input-inline">
+                <input type="text" id="IPv4" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">子网掩码</label>
+              <div class="layui-input-inline">
+                <input type="text" id="mask" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">网关地址</label>
+              <div class="layui-input-inline">
+                <input type="text" id="gateway" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">上传IP</label>
+              <div class="layui-input-inline">
+                <input type="text" id="srv_ip" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">雷达udp端口号</label>
+              <div class="layui-input-inline">
+                <input type="text" id="srv_port" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">主机本地端口号</label>
+              <div class="layui-input-inline">
+                <input type="text" id="local_port" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">转速</label>
+              <div class="layui-input-inline">
+                <input type="text" id="RPM" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">电机启动参数</label>
+              <div class="layui-input-inline">
+                <input type="text" id="PUL" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">FIR滤波阶数</label>
+              <div class="layui-input-inline">
+                <input type="text" id="FIR" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">圈数</label>
+              <div class="layui-input-inline">
+                <input type="text" id="cir" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">分辨率</label>
+              <div class="layui-input-inline">
+                <input type="text" id="with_resample" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">开机自动上传</label>
+              <div class="layui-input-inline">
+                <input type="text" id="ATS" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">固定上传</label>
+              <div class="layui-input-inline">
+                <input type="text" id="TFX" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">数据点平滑</label>
+              <div class="layui-input-inline">
+                <input type="text" id="SMT" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">去拖点</label>
+              <div class="layui-input-inline">
+                <input type="text" id="DSW" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">去拖点系数</label>
+              <div class="layui-input-inline">
+                <input type="text" id="AF" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+
+            <div class="layui-inline">
+              <label class="layui-form-label">记录校正系数</label>
+              <div class="layui-input-inline">
+                <input type="text" id="ERR" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">网络心跳</label>
+              <div class="layui-input-inline">
+                <input type="text" id="net_watchdog" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">记录IO口极性</label>
+              <div class="layui-input-inline">
+                <input type="text" id="PNP" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">数据报警/信息类型</label>
+              <div class="layui-input-inline">
+                <input type="text" id="PST" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">硬件版本号</label>
+              <div class="layui-input-inline">
+                <input type="text" id="version" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+          </div>
+        </form>
+      </div>
+      <div class="layui-tab-item ">
+        <blockquote class="layui-elem-quote layui-text" style="margin-top: 15px;">
+          说明介绍: 设置雷达的网络参数,仅网络款,防区款使用,输入框中的数据为参考格式
+        </blockquote>
+        <form class="layui-form">
+          <div class="layui-form-item">
+            <div class="layui-inline">
+              <label class="layui-form-label">雷达IP</label>
+              <div class="layui-input-inline">
+                <input id="setIPv4" autocomplete="off" lay-verify="require|ip" class="layui-input" value=""
+                  placeholder="192.168.0.110">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">子网掩码</label>
+              <div class="layui-input-inline">
+                <input id="setmask" autocomplete="off" lay-verify="require|ip" class="layui-input" value=""
+                  placeholder="255.255.255.0">
+              </div>
+            </div>
+            <div class="layui-inline">
+              <label class="layui-form-label">网关</label>
+              <div class="layui-input-inline">
+                <input id="setgateway" autocomplete="off" lay-verify="require|ip" class="layui-input" value=""
+                  placeholder="192.168.0.1">
+              </div>
+            </div>
+            <div class="layui-inline">
+              <label class="layui-form-label">端口</label>
+              <div class="layui-input-inline">
+                <input id="setlocal_port" autocomplete="off" lay-verify="require|number" class="layui-input" value=""
+                  placeholder="6543">
+              </div>
+            </div>
+            <div class="layui-inline">
+              <button type="button" class="layui-btn layui-btn-radius" lay-submit=""
+                onclick="setDevInfo(2)">设置发送参数</button>
+            </div>
+          </div>
+        </form>
+
+        <form class="layui-form">
+          <div class="layui-form-item">
+            <div class="layui-inline">
+              <label class="layui-form-label">接收端主机IP</label>
+              <div class="layui-input-inline">
+                <input id="setsrv_ip" autocomplete="off" lay-verify="require|ip" class="layui-input" value=""
+                  placeholder="192.168.0.75">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">接收端主机端口</label>
+              <div class="layui-input-inline">
+                <input id="setsrv_port" autocomplete="off" lay-verify="require|number" class="layui-input" value=""
+                  placeholder="6668">
+              </div>
+            </div>
+            <div class="layui-inline">
+              <button type="button" class="layui-btn layui-btn-radius" lay-submit=""
+                onclick="setDevInfo(3)">设置接收参数</button>
+            </div>
+          </div>
+
+        </form>
+      </div>
+      <div class="layui-tab-item">
+        <blockquote class="layui-elem-quote layui-text" style="margin-top: 15px;">
+          说明介绍: 设置雷达的参数,仅网络款,防区款使用,输入框中的数据为参考格式
+        </blockquote>
+        <div class="layui-row">
+          <div class="layui-col-md1">
+            <label class="layui-form-label">转速</label>
+            <input id="setRPM" autocomplete="off" class="layui-input" value="" placeholder="600/900/1200/1500">
+          </div>
+          <div class="layui-col-md1">
+            <label class="layui-form-label">偏差</label>
+            <input id="setERR" autocomplete="off" class="layui-input" value="" placeholder="-99~+99">
+          </div>
+          <div class="layui-col-md1">
+            <label class="layui-form-label">机器类型</label>
+            <input id="setNSP" autocomplete="off" class="layui-input" value="" placeholder="LDS-50C-S-UH">
+          </div>
+          <div class="layui-col-md1">
+            <label class="layui-form-label">机器序号</label>
+            <input id="setUID" autocomplete="off" class="layui-input" value="" placeholder="201812030001H">
+          </div>
+          <div class="layui-col-md1">
+            <label class="layui-form-label">设备ID</label>
+            <input id="setDID" autocomplete="off" class="layui-input" value="" placeholder="10">
+          </div>
+          <div class="layui-col-md1">
+            <label class="layui-form-label">滤波圈数</label>
+            <input id="setFIR" autocomplete="off" class="layui-input" value="" placeholder="01~99">
+          </div>
+          <!-- <div class="layui-col-md1">
+            <label class="layui-form-label">电机脉冲数</label>
+            <input id="setPUL" autocomplete="off" class="layui-input" value=""  placeholder="0500~4000">
+          </div>
+          <div class="layui-col-md1">
+            <label class="layui-form-label">版本号</label>
+            <input id="setVERSION" autocomplete="off" class="layui-input" value="" placeholder="V">
+          </div> -->
+          <form class="layui-form ">
+            <div class="layui-col-md1">
+              <label class="layui-form-label">IO类型</label>
+              <div class="layui-input-inline">
+                <select id="setPNP" lay-filter="IO">
+                  <option value="0">NPN</option>
+                  <option value="1">PNP</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="layui-col-md1">
+              <label class="layui-form-label">数据平滑</label>
+              <div class="layui-input-inline">
+                <select id="setSMT" lay-filter="SMT">
+                  <option value="0">关闭</option>
+                  <option value="1">打开</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="layui-col-md1">
+              <label class="layui-form-label">去拖点</label>
+              <div class="layui-input-inline">
+                <select id="setDSW" lay-filter="DSW">
+                  <option value="0">关闭</option>
+                  <option value="1">打开</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="layui-col-md1">
+              <label class="layui-form-label">去拖点系数</label>
+              <input id="setAF" autocomplete="off" class="layui-input" value="" placeholder="0~200">
+            </div>
+
+            <div class="layui-col-md1">
+              <label class="layui-form-label">开机自动上传</label>
+              <div class="layui-input-inline">
+                <select id="setATS" lay-filter="DSW">
+                  <option value="0">否</option>
+                  <option value="1">是</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="layui-col-md1">
+              <label class="layui-form-label">固定上传地址</label>
+              <div class="layui-input-inline">
+                <select id="setTFX" lay-filter="DSW">
+                  <option value="0">否</option>
+                  <option value="1">是</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="layui-col-md1">
+              <label class="layui-form-label">信息上传类型</label>
+              <div class="layui-input-inline">
+                <select id="setPST" lay-filter="DSW">
+                  <option value="0">无</option>
+                  <option value="1">数据</option>
+                  <option value="2">报警</option>
+                  <option value="3">数据+报警</option>
+                </select>
+              </div>
+            </div>
+          </form>
+          <div class="layui-row">
+            <div class="layui-col-md2 layui-col-md-offset5">
+              <button type="button" class="layui-btn layui-btn-fluid " onclick="setDevInfo()">设置</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="layui-tab-item">
+        <blockquote class="layui-elem-quote layui-text" style="margin-top: 15px;">
+          说明介绍: 对雷达页面数据的刷新显示，并不调整雷达的运行
+        </blockquote>
+        <button type="button" class="layui-btn layui-btn-radius" onclick="getPointsData()">获取雷达数据</button>
+        <button type="button" class="layui-btn layui-btn-radius" onclick="stopGetData()">停止获取雷达数据</button>
+        <form class="layui-form">
+          <div class="layui-form-item">
+            <label class="billRule-layui-form-label">设置雷达的点位大小</label>
+            <div class="layui-input-inline">
+              <select id="selectSize" lay-filter="size">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </div>
+            <div class="layui-inline">
+              <label class="layui-form-label">时间戳(秒)</label>
+              <div class="layui-input-inline">
+                <input type="text" id="timestamp_s" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">时间戳(微秒)</label>
+              <div class="layui-input-inline">
+                <input type="text" id="timestamp_us" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+
+            <div class="layui-inline">
+              <label class="layui-form-label">点数</label>
+              <div class="layui-input-inline">
+                <input type="text" id="index" readonly="true" autocomplete="off" class="layui-input">
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="layui-tab-item">
+        <blockquote class="layui-elem-quote layui-text" style="margin-top: 15px;">
+          说明介绍: 额外的一些功能
+        </blockquote>
+        <button type="button" class="layui-btn layui-btn-radius" onclick="showClientTable()">获取当前连接的客户端</button>
+        <button type="button" class="layui-btn layui-btn-radius" onclick="showLidarTable()">获取当前雷达设备列表</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div class="layui-fluid">
+    <div class="layui-row">
+      <div id="container" style="width: 80%;height:600px;"></div>
+    </div>
+  </div>
+  <!-- <div>
+    <label>设置运行参数(正常使用仅需要调整带*项) ~左右为最小值和最大值的取值范围,具体参数定义参考说明文档</label>
+  </div>
+  <div id="arg">
+    <ul>
+      <li>转速<input type="text" name="name" style="width:100px;" value="0450~1200"></li>
+      <li>偏差<input type="text" name="name" style="width:100px;" value="-99~+99"></li>
+      <li>*修改雷达ip,子网掩码，网关，端口<input type="text" name="name" style="width:360px;"
+          value="192.168.158.091 255.255.255.000 192.168.158.001 05000"></li>
+      <li>*接收雷达信息的ip地址和端口号<input type="text" name="name" value="192.168.158.043 12300"></li>
+    </ul>
+    <br>
+    <ul>
+      <li>机器类型<input type="text" name="name" value="LDS-50C-S-U"></li>
+      <li>机器序号<input type="text" name="name" value="201812030001"></li>
+      <li>滤波圈数<input type="text" name="name" style="width:100px;" value="01~99"></li>
+      <li>电机启动脉冲数<input type="text" name="name" style="width:100px;" value="0500~4000"></li>
+      <li>版本号<input type="text" name="name" style="width:100px;" value="2000"></li>
+      <li>*IO类型<input type="text" name="name" style="width:100px;" value="0~1"></li>
+    </ul>
+    <br>
+    <ul>
+      <li>*数据平滑<input type="text" name="name" style="width:100px;" value="0~1"></li>
+      <li>*去拖点<input type="text" name="name" style="width:100px;" value="0~1"></li>
+      <li>设备ID<input type="text" name="name" style="width:100px;" value="1"></li>
+      <li>开机自动上传<input type="text" name="name" style="width:100px;" value="0~1"></li>
+      <li>*固定上传地址<input type="text" name="name" style="width:100px;" value="0~1"></li>
+      <li>*数据/报警上传类型<input type="text" name="name" style="width:100px;" value="0~3"></li>
+       <li
+    </ul>
+  </div>
+  <br>
+   -->
+</body>
+<script src="jquery-1.11.0.min.js"></script>
+<script src="echarts.min.js"></script>
+<script src="./layui/layui.js" charset="utf-8"></script>
+<script type="text/javascript">
+  /***********全局变量说明 start ***********************/
+
+  const pointsData = [[1, 1]];//雷达点云数据
+  var option;//echart.js设置参数
+  var dom = document.getElementById('container');//绘图容器
+  var myChart;//echart组件全局变量
+  var size = 1;//点位显示的大小
+  var isPlay = true;//控制雷达是否停止刷新点云数据
+  var isPlay2 = true;//控制雷达的列表刷新
+  var currentTime = 1;//测试时间
+  var currentTime1 = 1;//测试时间
+  var type = "uart";//雷达的类型
+  var SDKENV="other";//SDK运行服务所在的操作系统 分为Windows|
+  /***********全局变量说明  end ***********************/
+  //echart.js初始化
+  myChart = echarts.init(dom, null, {
+    renderer: 'canvas',
+    useDirtyRect: false
+  });
+
+  //定时获取服务端的点云数据
+  function getPointsData() {
+    isPlay = true;
+    $.get("/data", function (data, status) {
+      if (isPlay)
+        getPointsData();
+      if (status != "success")
+        return;
+      var jsondatas = eval("(" + data + ")");
+      $.each(jsondatas.data, function (i, n) {
+        pointsData[i] = [n.distance * 1000, n.angle];
+        //console.log("dis:"+n.distance+"  angle:"+n.angle);
+      })
+
+      option.series[0].symbolSize = size;
+      option.series[0].data = pointsData;
+      myChart.setOption(option, true);
+      $('#index').attr("value", jsondatas.N);
+      $('#timestamp_s').attr("value", jsondatas.ts[0]);
+      $('#timestamp_us').attr("value", jsondatas.ts[1]);
+    });
+  };
+  //停止获取雷达数据
+  function stopGetData() {
+    isPlay = false;
+  }
+  //控制雷达的运动状态
+  function action(id) {
+    $("#" + id).attr("class", "layui-btn layui-btn-primary");
+    var cmd = "/action?cmd=" + id;
+    $.get(cmd, function (data, status) {
+      if (status = "success") {
+        $("#" + id).attr("class", "layui-btn layui-btn-radius");
+        console.log("id:" + id + "cmd:" + cmd);
+        console.log(data);
+      }
+    })
+  }
+
+  //获取设备信息
+  function getDevInfo() {
+    //不停止定时器会导致请求堵塞
+    isPlay = false;
+    $.get("/getDevinfo", function (data, status) {
+      var jsondatas = eval("(" + data + ")").data;
+      if (type == "udp") {
+        for (var val in jsondatas) {
+          debugger
+          //alert(val + " " + jsondatas[val]);//输出如:name 
+          $("#" + val).attr("value", jsondatas[val]);
+          if (val == "ERR") {
+            var tmp = jsondatas[val];
+            $("#set" + val).attr("value", tmp[0]);
+          } else if (val == "PNP" || val == "SMT" || val == "DSW" || val == "ATS" || val == "TFX" || val == "PST") {
+            var tmp = jsondatas[val];
+            $('#set' + val).find("option[value=" + tmp + "]").attr("selected", true);
+
+          }
+          else {
+            $("#set" + val).attr("value", jsondatas[val]);
+          }
+        }
+        layui.form.render('select') //再次渲染
+      }
+      //uart版本仅有序列号
+      $("#dev_sn").attr("value", jsondatas.dev_sn);
+      getPointsData();
+    });
+  }
+  function ipStr(str) {
+    var arr1 = str.split(".");
+    let result = arr1[0].toString().padStart(3, '0') + "." + arr1[1].toString().padStart(3, '0') + "." + arr1[2].toString().padStart(3, '0') + "." + arr1[3].toString().padStart(3, '0');
+    return result;
+
+  }
+
+  var g_num = 0;
+  //设置指定设备信息
+  function setDevInfo() {
+    //需要先获取当前设备信息，然后对比
+    var value;
+    var value1;
+    //轮询所有选项，是否有数据被修改
+    for (var index = 0; index <= 16; index++) {
+      if (index == 0) {
+        value = $("#setRPM").val();
+        value1 = $("#RPM").val();
+        if (value == value1)
+          continue;
+      } else if (index == 1) {
+        value = $("#setERR").val();
+        var tmp = $("#ERR").val();
+        var arr1 = tmp.split(",");
+        var value1 = arr1[0];
+        if (value == value1)
+          continue;
+      } else if (index == 2) {
+        var valuetmp1 = $("#setIPv4").val();
+        var valuetmp2 = $("#setmask").val();
+        var valuetmp3 = $("#setgateway").val();
+        var valuetmp4 = $("#setlocal_port").val();
+
+        var value1tmp1 = $("#IPv4").val();
+        var value1tmp2 = $("#mask").val();
+        var value1tmp3 = $("#gateway").val();
+        var value1tmp4 = $("#local_port").val();
+        if (valuetmp1 == value1tmp1 && valuetmp2 == value1tmp2 && valuetmp3 == value1tmp3 && valuetmp4 == value1tmp4)
+          continue;
+        value = ipStr(valuetmp1) + " " + ipStr(valuetmp2) + " " + ipStr(valuetmp3) + " " + valuetmp4.toString().padStart(5, '0');
+
+      } else if (index == 3) {
+        var valuetmp1 = $("#setsrv_ip").val();
+        var valuetmp2 = $("#setsrv_port").val();
+        var value1tmp1 = $("#srv_ip").val();
+        var value1tmp2 = $("#srv_port").val();
+        if (valuetmp1 == value1tmp1 && valuetmp2 == value1tmp2)
+          continue;
+        value = ipStr(valuetmp1) + " " + valuetmp2.toString().padStart(5, '0');
+      } else if (index == 4) {
+        value = $("#setNSP").val();
+        value1 = $("#NSP").val();
+        if (value == value1)
+          continue;
+      } else if (index == 5) {
+        value = $("#setUID").val();
+        value1 = $("#UID").val();
+        if (value == value1)
+          continue;
+      } else if (index == 6) {
+        value = $("#setFIR").val();
+        value1 = $("#FIR").val();
+        if (value == value1)
+          continue;
+      } else if (index == 7) {
+        continue;
+        // value = $("#setPUL").val();
+        // value1 = $("#PUL").val();
+        // if(value==value1)
+        //   continue;
+      } else if (index == 8) {
+        continue;
+        //value = $("#setVER").val();
+      } else if (index == 9) {
+        value = $("#setIO").val();
+        value1 = $("#IO").val();
+        if (value == value1)
+          continue;
+      } else if (index == 10) {
+        value = $("#setSMT").val();
+        value1 = $("#SMT").val();
+        if (value == value1)
+          continue;
+      } else if (index == 11) {
+        value = $("#setDSW").val();
+        value1 = $("#DSW").val();
+        if (value == value1)
+          continue;
+      } else if (index == 12) {
+        value = $("#setDID").val();
+        value1 = $("#DID").val();
+        if (value == value1)
+          continue;
+      } else if (index == 13) {
+        value = $("#setATS").val();
+        value1 = $("#ATS").val();
+        if (value == value1)
+          continue;
+      } else if (index == 14) {
+        value = $("#setTFX").val();
+        value1 = $("#TFX").val();
+        if (value == value1)
+          continue;
+      } else if (index == 15) {
+        value = $("#setPST").val();
+        value1 = $("#PST").val();
+        if (value == value1)
+          continue;
+      } else if (index == 16) {
+        value = $("#setAF").val();
+        value1 = $("#AF").val();
+        if (value == value1)
+          continue;
+      } else {
+        return;
+      }
+      var cmd = "/setDevinfo?index=" + index + "&value=" + value;
+      $.get(cmd, function (data, status) {
+        alert("cmd:" + cmd + "  " + data);
+        getDevInfo();
+      })
+    }
+  }
+  function showClientTable() {
+    layui.use('table', function () {
+      var table = layui.table;
+
+      $.get("/api/stats", function (data, status) {
+        var jsondatas = eval("(" + data + ")");
+        if (jsondatas.result != "SUCCESS")
+          return;
+        debugger
+        layer.open({
+          type: 1,
+          area: ["700px", '500px'],
+          title: "当前连接信息",
+          maxmin: false,
+          content: '<div><table id="templateTable2" lay-filter="templateTable2"></table></div>', //先定义一个数据表格的div框
+          success: function (index, layero) {
+            table.render({
+              elem: '#templateTable2'
+              , height: 420
+              , width: '100%'
+              , data: jsondatas.data
+              , cols: [[ //设置数据表格表头
+                { field: 'ID', title: '内部编号', width: 100, sort: true, fixed: 'left' }
+                , { field: 'type', title: '类型', fixed: 'left' }
+                , { field: 'state', title: '状态', width: 150, sort: true, fixed: 'left' }
+                , { field: 'loc', title: '本地地址', width: 200, fixed: 'left' }
+                , { field: 'rem', title: '目标地址', width: 200, fixed: 'left' }
+              ]]
+              , page: true //使用分页
+              , limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] //动态设置每页显示数据的条数
+              , limit: 10 //默认每页多少条
+              , response: { // 响应的数据的格式
+                statusName: 'result'
+                , statusCode: "SUCCESS"
+              }
+            });
+          }
+
+        });
+      });
+    });
+  }
+
+  function showLidarTable() {
+    layui.use('table', function () {
+      var table = layui.table;
+      $.get("getLidarList?mode=0", function (data, status) {
+        var jsondatas = eval("(" + data + ")");
+        if (jsondatas.result != "SUCCESS")
+          return;
+        layer.open({
+          type: 1,
+          area: ["700px", '500px'],
+          title: "当前可用雷达列表",
+          maxmin: false,
+          content: '<div><table id="templateTable" lay-filter="templateTable"}></table></div>', //先定义一个数据表格的div框
+          success: function (index, layero) {
+            table.render({
+              elem: '#templateTable'
+              , height: 420
+              , width: '100%'
+              , data: jsondatas.data
+              , cols: [[ //设置数据表格表头
+                { field: 'type', title: '设备类型', width: 100, sort: true, fixed: 'left' }
+                , { field: 'com_port', title: '串口号', width: 100, fixed: 'left' }
+                //, { field: 'com_speed', title: '波特率', width: 100, fixed: 'left' }
+                , { field: 'conn_ip', title: 'IP地址', width: 150, fixed: 'left' }
+                , { field: 'conn_port', title: 'IP端口号', width: 100, fixed: 'left' }
+                , { field: 'time', title: '更新时间', width: 100, fixed: 'left' }
+              ]]
+              , page: true //使用分页
+              , limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] //动态设置每页显示数据的条数
+              , limit: 10 //默认每页多少条
+              , response: { // 响应的数据的格式
+                statusName: 'result'
+                , statusCode: "SUCCESS"
+              }
+            });
+            var time = setInterval(function () {
+              table.reload('templateTable', {
+                url: '/getLidarList?mode=0'
+                , where: {} //设定异步数据接口的额外参数
+                , page: {
+                  curr: 1 //重新从第 1 页开始
+                }
+              });
+            }, 3000);
+          },
+          cancel: function(){
+            $.get("getLidarList?mode=1", function (data, status) {
+            var jsondatas = eval("(" + data + ")");
+            if (jsondatas.result != "SUCCESS")
+          return;
+            })
+		      }
+        });
+      });
+    });
+  }
+  //初始化获取雷达的类型
+  $(document).ready(function () {
+    $.get("/init", function (data, status) {
+      debugger
+      var jsondatas = eval("(" + data + ")");
+      type = jsondatas.data[0].type;
+      SDKENV=jsondatas.data[0].SDKENV;
+    });
+    getDevInfo();
+  });
+  /***********极坐标绘制参数配置 start ********************************/
+  option = {
+    title: {
+      text: '雷达图像'
+    },
+    legend: {
+      data: ['雷达点云数据'],
+      left: 'right'
+    },
+    polar: {
+      center: ["60%", "60%"]
+    },
+    angleAxis: {
+      type: 'value',
+      boundaryGap: false,
+      startAngle: 0,
+      min: 0,
+      max: 360,
+      interval: 30,
+      splitLine: {
+        show: true
+      },
+      axisLine: {
+        show: false
+      }
+    },
+    radiusAxis: {
+      type: 'value',
+      min: 0,
+      max: 1000,
+      axisLine: {
+        show: false
+      },
+      axisLabel: {
+        rotate: 45
+      }
+    },
+    myarea: {
+      silent: true
+    },
+
+    series: [
+      {
+        name: '雷达点云数据',
+        type: 'scatter',
+        coordinateSystem: 'polar',
+        showAllSymbol: false,
+        large: true,
+        largeThreshold: 500,
+        symbolSize: 2,
+        data: pointsData
+      }
+    ]
+  };
+  /***********极坐标绘制参数配置 end ********************************/
+  if (option && typeof option === 'object') {
+    myChart.setOption(option, true);
+  }
+  /***********当前绘图容器区域监听鼠标滑轮事件，并且设置坐标的最大值********************************/
+  if (dom.addEventListener) {
+    // IE9, Chrome, Safari, Opera
+    dom.addEventListener("mousewheel", MouseWheelHandler, false);
+    // Firefox
+    dom.addEventListener("DOMMouseScroll", MouseWheelHandler, false);
+  }
+  function MouseWheelHandler(e) {
+    var e = window.event || e; // old IE support
+    var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+    var tmp = option.radiusAxis.max + delta * 100;
+    if (tmp < 200)
+      return;
+    option.radiusAxis.max = tmp;
+  }
+  /***********当前绘图容器区域监听鼠标滑轮事件，并且设置坐标的最大值********************************/
+
+  layui.use(['element', 'layer', 'form', 'table'], function () {
+    var element = layui.element, //Tab的切换功能，切换事件监听等，需要依赖element模块
+      layer = layui.layer,
+      form = layui.form;
+    //对所有表单的监听
+    form.on('select(size)', function (data) {
+      size = $("select[id=selectSize").val();
+      console.log(size);
+      form.render('select');//select是固定写法 不是选择器
+    });
+    form.verify({
+      require: function (value) {
+        value = $.trim(value);
+        if (!value) {
+          return "必填项不能为空";
+        }
+      },
+      ip: [
+        /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$/
+        , 'IP地址不符合规则'
+      ]
+    });
+    //触发事件
+    var active = {
+      tabAdd: function () {
+        //新增一个Tab项
+        element.tabAdd('demo', {
+          title: '新选项' + (Math.random() * 1000 | 0) //用于演示
+          , content: '内容' + (Math.random() * 1000 | 0)
+          , id: new Date().getTime() //实际使用一般是规定好的id，这里以时间戳模拟下
+        })
+      }
+      , tabDelete: function (othis) {
+        //删除指定Tab项
+        element.tabDelete('demo', '44'); //删除：“商品管理”
+
+
+        othis.addClass('layui-btn-disabled');
+      }
+      , tabChange: function () {
+        //切换到指定Tab项
+        element.tabChange('demo', '22'); //切换到：用户管理
+      }
+    };
+
+    $('.site-demo-active').on('click', function () {
+      var othis = $(this), type = othis.data('type');
+      active[type] ? active[type].call(this, othis) : '';
+    });
+
+    //Hash地址的定位
+    var layid = location.hash.replace(/^#test=/, '');
+    element.tabChange('test', layid);
+
+    element.on('tab(test)', function (elem) {
+      location.hash = 'test=' + $(this).attr('lay-id');
+    });
+  });
+</script>
+<style type="text/css">
+  .layui-form-label {
+    width: 100px;
+  }
+</style>
+
+</html>

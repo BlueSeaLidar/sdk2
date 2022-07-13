@@ -1,0 +1,7 @@
+﻿################################################################################
+# 此 .gitignore 文件已由 Microsoft(R) Visual Studio 自动创建。
+################################################################################
+
+/workspace/vc10/.vs/demo/v17/ipch/AutoPCH/95376d26f5ae85d9/LIDARWEBSERVICE.ipch
+/workspace/vc10/.vs/demo/v17/ipch/AutoPCH
+/workspace/vc10/.vs/demo/FileContentIndex
