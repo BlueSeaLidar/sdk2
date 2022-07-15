@@ -52,7 +52,6 @@ int setup_lidar(int fd_udp, const char* ip, int port, int unit_is_mm, int with_c
 		memcpy(version, buf, 12);
 		printf("set LiDAR LXVERH  OK\n");
 	}
-	return 0;
 	if (udp_talk_C_PACK(fd_udp, ip, port, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",10, "SET LiDAR ", 9, buf))
 	{
 		printf("set LiDAR unit_is_mm  OK\n");

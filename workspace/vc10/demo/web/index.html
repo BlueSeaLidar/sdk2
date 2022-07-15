@@ -393,7 +393,8 @@
       </div>
       <div class="layui-tab-item">
         <blockquote class="layui-elem-quote layui-text" style="margin-top: 15px;">
-          说明介绍: 对雷达页面数据的刷新显示，并不调整雷达的运行
+          说明介绍: 对雷达页面数据的刷新显示，并不调整雷达的运行<br>
+          (特殊说明:仅获取全扇区角度的时候绘制界面,单扇区角度的时候绘制会刷新过快无法显示 配置文件设置 output_360:0)
         </blockquote>
         <button type="button" class="layui-btn layui-btn-radius" onclick="getPointsData()">获取雷达数据</button>
         <button type="button" class="layui-btn layui-btn-radius" onclick="stopGetData()">停止获取雷达数据</button>
@@ -512,12 +513,13 @@
     $.get("/data", function (data, status) {
       if (isPlay)
         getPointsData();
+      debugger
       if (status != "success")
         return;
       var jsondatas = eval("(" + data + ")");
       $.each(jsondatas.data, function (i, n) {
         pointsData[i] = [n.distance * 1000, n.angle];
-        //console.log("dis:"+n.distance+"  angle:"+n.angle);
+        console.log("dis:"+n.distance+"  angle:"+n.angle);
       })
 
       option.series[0].symbolSize = size;
@@ -855,7 +857,7 @@
         coordinateSystem: 'polar',
         showAllSymbol: false,
         large: true,
-        largeThreshold: 500,
+        largeThreshold: 10,
         symbolSize: 2,
         data: pointsData
       }
