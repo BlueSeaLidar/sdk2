@@ -6,51 +6,21 @@
 #include"../data.h"
 #include"../error.h"
 #include <time.h>
-char lidar_ip[256];
-int lidar_port = 5000;
+#include"ZoneAlarm.h"
 
-
-
-// CRC32
-unsigned int stm32crc(unsigned int *ptr, unsigned int len)
-{
-	unsigned int xbit, data;
-	unsigned int crc32 = 0xFFFFFFFF;
-	const unsigned int polynomial = 0x04c11db7;
-
-	for (unsigned int i = 0; i < len; i++)
-	{
-		xbit = 1 << 31;
-		data = ptr[i];
-		for (unsigned int bits = 0; bits < 32; bits++)
-		{
-			if (crc32 & 0x80000000)
-			{
-				crc32 <<= 1;
-				crc32 ^= polynomial;
-			}
-			else
-				crc32 <<= 1;
-
-			if (data & xbit)
-				crc32 ^= polynomial;
-
-			xbit >>= 1;
-		}
-	}
-	return crc32;
-}
+send_cmd_udp_ptr CallBack_Udp;
 
 int setup_lidar(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, char* version)
 {
 	char buf[32];
 	int nr = 0;
-
+	//初始化默认开始旋转
+	udp_talk_C_PACK(fd_udp, ip, port, 6, "LSTARH", 2, "OK", 11, buf);
 	//硬件版本号
 	if (udp_talk_C_PACK(fd_udp, ip, port, 6, "LXVERH", 14, "MOTOR VERSION:", 15, buf))
 	{
 		memcpy(version, buf, 12);
-		printf("set LiDAR LXVERH  OK\n");
+		printf("set LiDAR LXVERH  OK %s\n", version);
 	}
 	if (udp_talk_C_PACK(fd_udp, ip, port, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",10, "SET LiDAR ", 9, buf))
 	{
@@ -256,10 +226,10 @@ int setup_lidar_extre(int fd_udp, const char* ip, int port, DevData &data)
 bool udp_talk_GS_PACK(int fd_udp, const char* ip, int port, int n, const char* cmd, void* result)
 {
 	unsigned short sn = rand();
-	int rt = send_cmd_udp(fd_udp, ip, port, 0x4753, sn, n, cmd);
+	send_cmd_udp(fd_udp, ip, port, 0x4753, sn, n, cmd);
 
 	int nr = 0;
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < 1000; i++)
 	{
 		fd_set fds;
 		FD_ZERO(&fds);
@@ -304,7 +274,7 @@ bool udp_talk_GS_PACK(int fd_udp, const char* ip, int port, int n, const char* c
 bool udp_talk_S_PACK(int fd_udp, const char* ip, int port, int n, const char* cmd, void* result)
 {
 	unsigned short sn = rand();
-	int rt = send_cmd_udp(fd_udp, ip, port, 0x0053, sn, n, cmd);
+	send_cmd_udp(fd_udp, ip, port, 0x0053, sn, n, cmd);
 
 	int nr = 0;
 	for (int i = 0; i < 100; i++)
@@ -352,7 +322,7 @@ bool udp_talk_C_PACK(int fd_udp, const char* lidar_ip, int lidar_port,
 	printf("send command : \'%s\' \n", cmd);
 
 	unsigned short sn = rand();
-	int rt = send_cmd_udp(fd_udp, lidar_ip, lidar_port, 0x0043, sn, n, cmd);
+	send_cmd_udp(fd_udp, lidar_ip, lidar_port, 0x0043, sn, n, cmd);
 
 	time_t t0 = time(NULL);
 	int ntry = 0;
@@ -411,7 +381,7 @@ bool udp_talk_C_PACK(int fd_udp, const char* lidar_ip, int lidar_port,
 	return false;
 }
 
-bool send_cmd_udp_f(int fd_udp, const char* dev_ip, int dev_port,
+void send_cmd_udp_f(int fd_udp, const char* dev_ip, int dev_port,
 	int cmd, int sn,
 	int len, const void* snd_buf, bool bpr)
 {
@@ -448,14 +418,13 @@ bool send_cmd_udp_f(int fd_udp, const char* dev_ip, int dev_port,
 		printf("send to %s:%d 0x%04x sn[%d] L=%d : %s\n",
 			dev_ip, dev_port, cmd, sn, len, s);
 	}
-	return true;
 }
 
-bool send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port,
+void send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port,
 	int cmd, int sn,
 	int len, const void* snd_buf)
 {
-	return send_cmd_udp_f(fd_udp, dev_ip, dev_port, cmd, sn, len, snd_buf, true);
+	 send_cmd_udp_f(fd_udp, dev_ip, dev_port, cmd, sn, len, snd_buf, false);
 }
 
 
@@ -466,17 +435,20 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 	PeekMessage(&msg, NULL, GetDevInfo_MSG, Print_TimeStamp_MSG, PM_NOREMOVE);
 	bool isrun = false;//初始化运行雷达是否正常运行标志位
 	bool timeprint = false;
-	char cmd[12] = "LGCPSH";
 	RunConfig* cfg = (RunConfig*)param;
+	int zoneFlag = 0;//读写防区标志位    0为正常运行  1为读  2为写
+	int zoneSN = rand();
+	CallBack_Udp = send_cmd_udp;
+	ZoneAlarm* zonealarm = new ZoneAlarm(cfg->fd,true, cfg->lidar_ip,cfg->lidar_port, CallBack_Udp);
 	PointData tmp;
 	memset(&tmp, 0, sizeof(PointData));
-
 
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	time_t tto = tv.tv_sec + 1;
 	uint32_t delay = 0;
 	//ws2_32库会导致setsockopt失败，这里使用wsock32库
+	//设置组播模式
 	if (cfg->is_group_listener == 1)
 	{
 		ip_mreq group;
@@ -496,9 +468,6 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 	}
 	else
 	{
-		//初始化默认开始旋转
-		char tmp[12] = { 0 };
-		udp_talk_C_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 6, "LSTARH", 2, "OK", 11, tmp);
 		setup_lidar(cfg->fd, cfg->lidar_ip, cfg->lidar_port, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->version);
 	}
 	
@@ -540,7 +509,8 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 
 			if (ret == 0)
 			{
-				ret = send_cmd_udp(cfg->fd, lidar_ip, lidar_port, 0x0043, rand(), 6, cmd);
+				//当雷达没有向指定主机传输数据时，使雷达发送数据，其他控制指令可以达到同样的效果，仅兼容老版本使用
+				send_cmd_udp(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 0x0043, rand(), 6, "LGCPSH");
 				continue;
 			}
 
@@ -557,66 +527,109 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 			int sz = sizeof(addr);
 
 			int len = recvfrom(cfg->fd, (char*)buf, BUF_SIZE, 0, (struct sockaddr*)&addr, &sz);
+			
 			if (len > 0)
 			{
-				RawData dat;
-				bool is_pack;
-				int consume;
-				if (cfg->unit_is_mm && cfg->with_confidence)
+				int res = -1;
+				if (zoneFlag == 1)
 				{
-					is_pack = parse_data_x(len, buf,
-						fan_span, cfg->unit_is_mm, cfg->with_confidence,
-						dat, consume, cfg->with_chk);
-				}
-				else
-				{
-					is_pack = parse_data(len, buf,
-						fan_span, cfg->unit_is_mm, cfg->with_confidence,
-						dat, consume, cfg->with_chk);
-				}
-				if (is_pack)
-				{
-					//！！！CN:用户需要提取数据的操作，可以参考该函数,具体详细的其他打印操作参考user.cpp文件
-					//！！！EN:User needs to extract data operation, you can refer to this function，For details about other printing operations, please refer to the user.cpp file
-					if (cfg->output_scan)
-					{						
-						if (cfg->output_360)
-						{
-							//多扇区分次发送
-							memset(&tmp, 0, sizeof(PointData));
-							fan_data_process(dat, cfg->output_file, tmp);
-						}
-						else
-						{
-							// 全部点位，全部扇区
-							whole_data_process(dat, cfg->from_zero, cfg->output_file, tmp);
-						}
-						if (tmp.N > 0)
-						{
-							((void(*)(int, void*))cfg->callback)(1, &tmp);
-							memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
-						}
-					}
-					//证明雷达已经正常运行
-					if (isrun == false) //set thread start event 
+					res = zonealarm->getZoneRev(buf, zoneSN);
+					if (res != 0)
 					{
-						if (cfg->hStartEvent == 0 || SetEvent(cfg->hStartEvent) == 0)
+						RecvZoneDatas* rev = new RecvZoneDatas;
+						memcpy(rev, zonealarm->getZoneResult(), sizeof(RecvZoneDatas));
+						rev->result = res;
+						if (!PostThreadMessage(msg.lParam, msg.message, (WPARAM)rev, 0))
 						{
-							printf("set start event failed,errno:%d\n", ::GetLastError());
-							return 1;
+							DEBUG_PR("threadson post message  get_ZONE_MSG failed,errno:%d\n", ::GetLastError());
 						}
-						else
-						{
-							isrun = true;
-						}
-						
+						zoneFlag = 0;
 					}
 				}
-	
+				//设置防区
+				else if (zoneFlag == 2)
+				{
+					res = zonealarm->setZoneRev(buf, zoneSN);
+					if (res != 0)
+					{
+						int* rev = new int;
+						*rev = res;
+						if (!PostThreadMessage(msg.lParam, msg.message, (WPARAM)rev, 0))
+						{
+							DEBUG_PR("threadson post message  Set_ZONE_MSG failed,errno:%d\n", ::GetLastError());
+						}
+						char tmpbuf[16] = { 0 };
+						udp_talk_C_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 6, "LSTARH", 2, "OK", 11, tmpbuf);
+						zoneFlag = 0;
+					}
+
+				}//点云数据
+				else {
+
+					RawData dat;
+					LidarMsgHdr zone;
+					memset(&zone, 0, sizeof(LidarMsgHdr));
+					bool is_pack;
+					int consume;
+					if (cfg->unit_is_mm && cfg->with_confidence)
+					{
+						is_pack = parse_data_x(len, buf,
+							fan_span, cfg->unit_is_mm, cfg->with_confidence,
+							dat, consume, cfg->with_chk, zone);
+					}
+					else
+					{
+						is_pack = parse_data(len, buf,
+							fan_span, cfg->unit_is_mm, cfg->with_confidence,
+							dat, consume, cfg->with_chk);
+					}
+					if (is_pack)
+					{
+						//！！！CN:用户需要提取数据的操作，可以参考该函数,具体详细的其他打印操作参考user.cpp文件
+						//！！！EN:User needs to extract data operation, you can refer to this function，For details about other printing operations, please refer to the user.cpp file
+						if (cfg->output_scan)
+						{
+							if (zone.timestamp != 0)
+							{
+								memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
+							}
+							if (cfg->output_360)
+							{
+								//多扇区分次发送
+								memset(&tmp, 0, sizeof(PointData));
+								fan_data_process(dat, cfg->output_file, tmp);
+							}
+							else
+							{
+								// 全部点位，全部扇区
+								whole_data_process(dat, cfg->from_zero, cfg->output_file, tmp);
+							}
+							if (tmp.N > 0)
+							{
+								((void(*)(int, void*))cfg->callback)(1, &tmp);
+								memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
+							}
+						}
+						//证明雷达已经正常运行
+						if (isrun == false) //set thread start event 
+						{
+							if (cfg->hStartEvent == 0 || SetEvent(cfg->hStartEvent) == 0)
+							{
+								printf("set start event failed,errno:%d\n", ::GetLastError());
+								return 1;
+							}
+							else
+							{
+								isrun = true;
+							}
+
+						}
+					}
+
+				}
 			}
-			
 		}
-		if (PeekMessage(&msg, NULL, GetDevInfo_MSG, Get_OnePoint_MSG, PM_REMOVE)) //get msg from message queue
+		if (PeekMessage(&msg, NULL, GetDevInfo_MSG, Set_ZONE_MSG, PM_REMOVE)) //get msg from message queue
 		{
 			/*CMD *cmd = (CMD*)msg.wParam;
 			INFO_PR("threadson recv framehead:%x  str:%s addr:%x\n", cmd->framehead,cmd->str, cmd);*/
@@ -694,6 +707,22 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 			// 	}
 			// 	break;
 			// }
+			case Get_ZONE_MSG:
+			{
+				zonealarm->getZone(zoneSN);
+				zoneFlag = 1;
+				break;
+			}
+			case Set_ZONE_MSG:
+			{
+				char tmpbuf[12] = { 0 };
+				udp_talk_C_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 6, "LSTOPH", 2, "OK", 11, tmpbuf); 
+				zones* cmd = (zones*)msg.wParam;
+				zonealarm->setZone(*cmd, zoneSN);
+				zoneFlag = 2;
+				delete[]cmd;
+				break;
+			}
 			}
 		}
 

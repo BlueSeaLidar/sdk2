@@ -1,12 +1,13 @@
 ﻿#include "LidarCheckService.h"
-#include"LidarWebService.h"
-#include"standard_interface.h"
-static const char* s_debug_level = "2";
-static const char* s_root_dir = "web";
-static const char* s_enable_hexdump = "no";
-static const char* s_ssi_pattern = "*";
-mg_connection* g_c;
-LidarCheckService* g_checkservice;
+#include "LidarWebService.h"
+#include "ZoneAlarm.h"
+#include "standard_interface.h"
+static const char *s_debug_level = "2";
+static const char *s_root_dir = "web";
+static const char *s_enable_hexdump = "no";
+static const char *s_ssi_pattern = "*";
+mg_connection *g_c;
+LidarCheckService *g_checkservice;
 LidarWebService::LidarWebService(int port)
 {
 	m_port = port;
@@ -20,13 +21,14 @@ LidarWebService::~LidarWebService()
 
 void LidarWebService::OpenLocalService()
 {
-	char address[64] = { 0 };
+	char address[64] = {0};
 	sprintf(address, "http://0.0.0.0:%d", m_port);
-	struct mg_mgr mgr;                            // Event manager
-	mg_log_set("2");                              // Set to 3 to enable debug
-	mg_mgr_init(&mgr);                            // Initialise event manager
-	mg_http_listen(&mgr, address, fn, NULL);  // Create HTTP listener
-	for (;;) mg_mgr_poll(&mgr, 50);                    // Infinite event loop
+	struct mg_mgr mgr;						 // Event manager
+	mg_log_set("2");						 // Set to 3 to enable debug
+	mg_mgr_init(&mgr);						 // Initialise event manager
+	mg_http_listen(&mgr, address, fn, NULL); // Create HTTP listener
+	for (;;)
+		mg_mgr_poll(&mgr, 50); // Infinite event loop
 	mg_mgr_free(&mgr);
 	INFO_PR("Lidar service is open success\n");
 }
@@ -34,31 +36,31 @@ void LidarWebService::OpenLocalService()
 void LidarWebService::CloseLocalService()
 {
 }
-static char* jsonValue(const char* result, const char* message, cJSON* array)
+static char *jsonValue(const char *result, const char *message, cJSON *array)
 {
 	if (array == NULL)
 		array = cJSON_CreateArray();
-	cJSON* root = cJSON_CreateObject();
-	cJSON* item = cJSON_CreateString(result);
+	cJSON *root = cJSON_CreateObject();
+	cJSON *item = cJSON_CreateString(result);
 	cJSON_AddItemToObject(root, "result", item);
 	item = cJSON_CreateString(message);
 	cJSON_AddItemToObject(root, "message", item);
 
 	cJSON_AddItemToObject(root, "data", array);
-	char* out = cJSON_Print(root);
+	char *out = cJSON_Print(root);
 	cJSON_Delete(root);
 	return out;
 }
 
-static void EEpromV101ToStr(EEpromV101* eepromv101, char* version, char* result)
+static void EEpromV101ToStr(EEpromV101 *eepromv101, char *version, char *result)
 {
-	cJSON* root = cJSON_CreateObject();
+	cJSON *root = cJSON_CreateObject();
 	//类型，编号，序列号
-	char tmp_sn[20] = { 0 };
+	char tmp_sn[20] = {0};
 	memcpy(tmp_sn, eepromv101->dev_sn, sizeof(eepromv101->dev_sn) - 1);
-	char tmp_type[16] = { 0 };
+	char tmp_type[16] = {0};
 	memcpy(tmp_type, eepromv101->dev_type, sizeof(eepromv101->dev_type) - 1);
-	cJSON* item = cJSON_CreateNumber(eepromv101->dev_id);
+	cJSON *item = cJSON_CreateNumber(eepromv101->dev_id);
 	cJSON_AddItemToObject(root, "DID", item);
 	item = cJSON_CreateString(tmp_sn);
 	cJSON_AddItemToObject(root, "UID", item);
@@ -66,17 +68,17 @@ static void EEpromV101ToStr(EEpromV101* eepromv101, char* version, char* result)
 	cJSON_AddItemToObject(root, "NSP", item);
 	/*INFO_PR("dev info: 设备编号:%d\t 序列号:%s\t 类型:%s\n", eepromv101->dev_id, tmp_sn, tmp_type);*/
 	// ip地址 子网掩码 网关地址 默认目标IP  默认目标udp端口号  默认UDP对外服务端口号
-	char tmp_IPv4[16] = { 0 };
-	char tmp_mask[16] = { 0 };
-	char tmp_gateway[16] = { 0 };
-	char tmp_srv_ip[16] = { 0 };
+	char tmp_IPv4[16] = {0};
+	char tmp_mask[16] = {0};
+	char tmp_gateway[16] = {0};
+	char tmp_srv_ip[16] = {0};
 
 	sprintf(tmp_IPv4, "%d.%d.%d.%d", eepromv101->IPv4[0], eepromv101->IPv4[1], eepromv101->IPv4[2], eepromv101->IPv4[3]);
 	sprintf(tmp_mask, "%d.%d.%d.%d", eepromv101->mask[0], eepromv101->mask[1], eepromv101->mask[2], eepromv101->mask[3]);
 	sprintf(tmp_gateway, "%d.%d.%d.%d", eepromv101->gateway[0], eepromv101->gateway[1], eepromv101->gateway[2], eepromv101->gateway[3]);
 	sprintf(tmp_srv_ip, "%d.%d.%d.%d", eepromv101->srv_ip[0], eepromv101->srv_ip[1], eepromv101->srv_ip[2], eepromv101->srv_ip[3]);
 
-	//INFO_PR("dev info: ip地址:%s 子网掩码:%s 网关地址:%s 默认目标IP:%s  默认目标udp端口号:%d   默认UDP对外服务端口号:%d\n",
+	// INFO_PR("dev info: ip地址:%s 子网掩码:%s 网关地址:%s 默认目标IP:%s  默认目标udp端口号:%d   默认UDP对外服务端口号:%d\n",
 	//	tmp_IPv4, tmp_mask, tmp_gateway, tmp_srv_ip, eepromv101->srv_port, eepromv101->local_port);
 	item = cJSON_CreateString(tmp_IPv4);
 	cJSON_AddItemToObject(root, "IPv4", item);
@@ -94,14 +96,15 @@ static void EEpromV101ToStr(EEpromV101* eepromv101, char* version, char* result)
 	/*char tmp_ranger_bias[8] = { 0 };
 	memcpy(tmp_ranger_bias, eepromv101->ranger_bias, sizeof(eepromv101->ranger_bias) - 1);*/
 
-	int tmp_ranger_bias[6] = { 0 };
-	for (int i = 0; i < 4; i++) {
+	int tmp_ranger_bias[6] = {0};
+	for (int i = 0; i < 4; i++)
+	{
 		tmp_ranger_bias[i] = eepromv101->ranger_bias[i * 2 + 1];
 		if (eepromv101->ranger_bias[i * 2])
 			tmp_ranger_bias[i] *= -1;
 	}
 	//转速 ,电机启动参数,FIR滤波阶数，圈数，分辨率，开机自动上传，固定上传，数据点平滑，去拖点，记录校正系数，网络心跳，记录IO口极性
-	//sprintf(result,"dev info: 转速:%d 电机启动参数:%d FIR滤波阶数:%d 圈数:%d  分辨率:%d   开机自动上传:%d 固定上传:%d  数据点平滑:%d 去拖点:%d  记录校正系数:%s  网络心跳:%d  记录IO口极性:%d\n",
+	// sprintf(result,"dev info: 转速:%d 电机启动参数:%d FIR滤波阶数:%d 圈数:%d  分辨率:%d   开机自动上传:%d 固定上传:%d  数据点平滑:%d 去拖点:%d  记录校正系数:%s  网络心跳:%d  记录IO口极性:%d\n",
 	//	eepromv101->RPM, eepromv101->RPM_pulse, eepromv101->fir_filter, eepromv101->cir, eepromv101->with_resample, eepromv101->auto_start,
 	//	eepromv101->target_fixed, eepromv101->with_smooth, eepromv101->with_filter, tmp_ranger_bias, eepromv101->net_watchdog, eepromv101->pnp_flags);
 	item = cJSON_CreateNumber(eepromv101->RPM);
@@ -122,22 +125,17 @@ static void EEpromV101ToStr(EEpromV101* eepromv101, char* version, char* result)
 	item = cJSON_CreateNumber(eepromv101->auto_start);
 	cJSON_AddItemToObject(root, "ATS", item);
 
-
 	item = cJSON_CreateNumber(eepromv101->target_fixed);
 	cJSON_AddItemToObject(root, "TFX", item);
-
 
 	item = cJSON_CreateNumber(eepromv101->with_smooth);
 	cJSON_AddItemToObject(root, "SMT", item);
 
-
 	item = cJSON_CreateNumber(eepromv101->with_filter);
 	cJSON_AddItemToObject(root, "DSW", item);
 
-
 	item = cJSON_CreateIntArray(tmp_ranger_bias, 6);
 	cJSON_AddItemToObject(root, "ERR", item);
-
 
 	item = cJSON_CreateNumber(eepromv101->net_watchdog);
 	cJSON_AddItemToObject(root, "net_watchdog", item);
@@ -153,11 +151,11 @@ static void EEpromV101ToStr(EEpromV101* eepromv101, char* version, char* result)
 
 	item = cJSON_CreateString(version);
 	cJSON_AddItemToObject(root, "version", item);
-	char* out = jsonValue("SUCCESS", "", root);
+	char *out = jsonValue("SUCCESS", "", root);
 	sprintf(result, "%s", out);
 	free(out);
 }
-void DevDataToStr(DevData* devdata, int index, char* value)
+void DevDataToStr(DevData *devdata, int index, char *value)
 {
 	memcpy(devdata->set + index, "1", 1);
 	switch (index)
@@ -212,20 +210,21 @@ void DevDataToStr(DevData* devdata, int index, char* value)
 	case 16:
 		devdata->AF = atoi(value);
 		break;
-
 	}
-
 }
-static void fn(struct mg_connection* c, int ev, void* ev_data, void* fn_data) {
+static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
+{
 
 	if (ev == MG_EV_HTTP_MSG)
 	{
-		struct mg_http_message* hm = (struct mg_http_message*)ev_data;
-		if (mg_http_match_uri(hm, "/api/stats")) {
-			cJSON* points = cJSON_CreateArray();
-			cJSON* user;
-			cJSON* item = cJSON_CreateNumber(1);
-			for (struct mg_connection* t = c->mgr->conns; t != NULL; t = t->next) {
+		struct mg_http_message *hm = (struct mg_http_message *)ev_data;
+		if (mg_http_match_uri(hm, "/api/stats"))
+		{
+			cJSON *points = cJSON_CreateArray();
+			cJSON *user;
+			cJSON *item = cJSON_CreateNumber(1);
+			for (struct mg_connection *t = c->mgr->conns; t != NULL; t = t->next)
+			{
 				char loc[40], rem[40];
 				user = cJSON_CreateObject();
 				item = cJSON_CreateNumber(t->id);
@@ -234,7 +233,8 @@ static void fn(struct mg_connection* c, int ev, void* ev_data, void* fn_data) {
 				item = cJSON_CreateString(t->is_udp ? "UDP" : "TCP");
 				cJSON_AddItemToObject(user, "type", item);
 
-				item = cJSON_CreateString(t->is_listening ? "LISTENING" : t->is_accepted ? "ACCEPTED " : "CONNECTED");
+				item = cJSON_CreateString(t->is_listening ? "LISTENING" : t->is_accepted ? "ACCEPTED "
+																						 : "CONNECTED");
 				cJSON_AddItemToObject(user, "state", item);
 				mg_straddr(&t->loc, loc, sizeof(loc));
 				item = cJSON_CreateString(loc);
@@ -244,16 +244,17 @@ static void fn(struct mg_connection* c, int ev, void* ev_data, void* fn_data) {
 				cJSON_AddItemToObject(user, "rem", item);
 				cJSON_AddItemToArray(points, user);
 			}
-			char* out = jsonValue("SUCCESS", "", points);
+			char *out = jsonValue("SUCCESS", "", points);
 			mg_http_reply(c, 200, "", "%s", out);
 			free(out);
 			return;
 		}
 
-		else if (mg_http_match_uri(hm, "/init")) {
-			cJSON* arr = cJSON_CreateArray();
-			cJSON* point = cJSON_CreateObject();
-			cJSON* item = cJSON_CreateString(g_cfg->type);
+		else if (mg_http_match_uri(hm, "/init"))
+		{
+			cJSON *arr = cJSON_CreateArray();
+			cJSON *point = cJSON_CreateObject();
+			cJSON *item = cJSON_CreateString(g_cfg->type);
 			cJSON_AddItemToObject(point, "type", item);
 			std::string SYSType;
 #ifdef _WIN32
@@ -266,56 +267,58 @@ static void fn(struct mg_connection* c, int ev, void* ev_data, void* fn_data) {
 			item = cJSON_CreateString(SYSType.c_str());
 			cJSON_AddItemToObject(point, "SDKENV", item);
 			cJSON_AddItemToObject(arr, "", point);
-			char* out = jsonValue("SUCCESS", "", arr);
+			char *out = jsonValue("SUCCESS", "", arr);
 			mg_http_reply(c, 200, "", "%s", out);
 			free(out);
 			return;
 		}
 		//雷达的动作控制
-		else if (mg_http_match_uri(hm, "/action")) {
-			cJSON* arr = cJSON_CreateArray();
-			char query[256] = { 0 };
+		else if (mg_http_match_uri(hm, "/action"))
+		{
+			cJSON *arr = cJSON_CreateArray();
+			char query[256] = {0};
 			memcpy(query, hm->query.ptr, hm->query.len);
-			char* ret = strstr(query, "cmd=");
+			char *ret = strstr(query, "cmd=");
 			if (!ret || strlen(ret + 4) != 6)
 			{
-				char* out = jsonValue("ERROR", "url is not current!", NULL);
+				char *out = jsonValue("ERROR", "url is not current!", NULL);
 				mg_http_reply(c, 200, "", "%s", out);
 				free(out);
 				return;
 			}
-			char cmd[7] = { 0 };
+			char cmd[7] = {0};
 			sprintf(cmd, "%s", ret + 4);
 			ControlDrv(g_cfg->thread_ID[1], cmd);
-			char* out = jsonValue("SUCCESS", "", NULL);
+			char *out = jsonValue("SUCCESS", "", NULL);
 			mg_http_reply(c, 200, "", "%s", out);
 			free(out);
 			return;
 		}
-		//雷达点云数据获取
-		else if (mg_http_match_uri(hm, "/data")) {
+		//雷达点云数据/报警信息
+		else if (mg_http_match_uri(hm, "/data"))
+		{
 			g_cfg->output_scan = true;
-			PointData  tmp;
+			PointData tmp;
 			memcpy(&tmp, &g_cfg->pointdata, sizeof(PointData));
 			if (tmp.N <= 0 || tmp.N > 10000)
 			{
-				char* out = jsonValue("ERROR", "get point number unusual", NULL);
+				char *out = jsonValue("ERROR", "get point number unusual", NULL);
 				mg_http_reply(c, 200, "", "%s", out);
 				free(out);
 				return;
 			}
-			cJSON* root = cJSON_CreateObject();
-			cJSON* points = cJSON_CreateArray();
-			cJSON* point;
-			cJSON* item = cJSON_CreateNumber(tmp.N);
+			cJSON *root = cJSON_CreateObject();
+			cJSON *points = cJSON_CreateArray();
+			cJSON *point;
+			cJSON *item = cJSON_CreateNumber(tmp.N);
 			cJSON_AddItemToObject(root, "N", item);
-			if (strcmp(g_cfg->type, "uart") == 0)
+			if (strcmp(g_cfg->type, "uart") == 0 || strcmp(g_cfg->type, "vpc") == 0)
 			{
-				const int emptyarr[2] = { 0,0 };
+				const int emptyarr[2] = {0, 0};
 				item = cJSON_CreateIntArray(emptyarr, 2);
 			}
 			else
-				item = cJSON_CreateIntArray((int*)tmp.ts, 2);
+				item = cJSON_CreateIntArray((int *)tmp.ts, 2);
 			cJSON_AddItemToObject(root, "ts", item);
 			for (int i = 0; i < tmp.N; i++)
 			{
@@ -333,31 +336,47 @@ static void fn(struct mg_connection* c, int ev, void* ev_data, void* fn_data) {
 			cJSON_AddItemToObject(root, "result", item);
 			item = cJSON_CreateString("");
 			cJSON_AddItemToObject(root, "message", item);
-			char* out = cJSON_Print(root);
+
+			//添加防区相关的数据
+			LidarMsgHdr zone;
+			memcpy(&zone, &g_cfg->zone, sizeof(LidarMsgHdr));
+
+			item = cJSON_CreateNumber(zone.flags);
+			cJSON_AddItemToObject(root, "zone_flag", item);
+			item = cJSON_CreateNumber(zone.events);
+			cJSON_AddItemToObject(root, "zone_events", item);
+			item = cJSON_CreateNumber(zone.zone_actived);
+			cJSON_AddItemToObject(root, "zone_actived", item);
+
+			char *out = cJSON_Print(root);
 			mg_http_reply(c, 200, "", "%s", out);
 			cJSON_Delete(root);
 			free(out);
 		}
 		//获取雷达设备信息
-		else if (mg_http_match_uri(hm, "/getDevinfo")) {
+		else if (mg_http_match_uri(hm, "/getDevinfo"))
+		{
 			EEpromV101 eepromv101;
 			GetDevInfo(g_cfg->thread_ID[1], eepromv101);
-			char info[1024] = { 0 };
+			char info[1024] = {0};
 			EEpromV101ToStr(&eepromv101, g_cfg->version, info);
 			mg_http_reply(c, 200, "", "%s", info);
 			return;
 		}
 		//设置雷达设备参数
-		else if (mg_http_match_uri(hm, "/setDevinfo")) {
+		else if (mg_http_match_uri(hm, "/setDevinfo"))
+		{
+			memset(&g_cfg->pointdata, 0, sizeof(PointData));
+			memset(&g_cfg->zone, 0, sizeof(LidarMsgHdr));
 
 			if (strcmp(g_cfg->type, "uart") == 0)
 			{
-				char* out = jsonValue("ERROR", "uart is not support this function!", NULL);
+				char *out = jsonValue("ERROR", "uart is not support this function!", NULL);
 				mg_http_reply(c, 200, "", "%s", out);
 				free(out);
 				return;
 			}
-			char query[256] = { 0 };
+			char query[256] = {0};
 			memcpy(query, hm->query.ptr, hm->query.len);
 			std::string str = query;
 			StringReplace(str, "%20", " ");
@@ -366,7 +385,7 @@ static void fn(struct mg_connection* c, int ev, void* ev_data, void* fn_data) {
 			//对传入字符串格式是否合法
 			if (ret1 < 0 || ret2 < 0)
 			{
-				char* out = jsonValue("ERROR", "url is not current!", NULL);
+				char *out = jsonValue("ERROR", "url is not current!", NULL);
 				mg_http_reply(c, 200, "", "%s", out);
 				free(out);
 				return;
@@ -374,9 +393,9 @@ static void fn(struct mg_connection* c, int ev, void* ev_data, void* fn_data) {
 			int index = 0;
 			index = atoi(str.substr(ret1 + 6, ret2 - ret1 - 6).c_str());
 			//传入命令的值超过限制
-			if (index < 0 || index>16)
+			if (index < 0 || index > 16)
 			{
-				char* out = jsonValue("ERROR", "url is not current!", NULL);
+				char *out = jsonValue("ERROR", "url is not current!", NULL);
 				mg_http_reply(c, 200, "", "%s", out);
 				free(out);
 				return;
@@ -385,41 +404,42 @@ static void fn(struct mg_connection* c, int ev, void* ev_data, void* fn_data) {
 			std::string value = str.substr(ret2 + 7);
 			DevData tmpData;
 			memset(&tmpData, 0, sizeof(DevData));
-			DevDataToStr(&tmpData, index, (char*)value.c_str());
+			DevDataToStr(&tmpData, index, (char *)value.c_str());
 			SetDevInfo_extre(g_cfg->thread_ID[1], tmpData);
-			char buf[3] = { 0 };
+			char buf[3] = {0};
 			memcpy(buf, tmpData.result + 2 * index, 2);
-			char* out = jsonValue("SUCCESS", buf, NULL);
+			char *out = jsonValue("SUCCESS", buf, NULL);
 			mg_http_reply(c, 200, "", "%s", out);
 			free(out);
 			return;
 		}
 		//获取当前雷达的列表    0表示子线程运行
-		else if (mg_http_match_uri(hm, "/getLidarList")){
-			char query[256] = { 0 };
+		else if (mg_http_match_uri(hm, "/getLidarList"))
+		{
+			char query[256] = {0};
 			memcpy(query, hm->query.ptr, hm->query.len);
 			std::string str = query;
 			StringReplace(str, "%20", " ");
 			int ret1 = str.find("mode=");
 			if (ret1 < 0)
 			{
-				char* out = jsonValue("ERROR", "url is not current!", NULL);
+				char *out = jsonValue("ERROR", "url is not current!", NULL);
 				mg_http_reply(c, 200, "", "%s", out);
 				free(out);
 				return;
 			}
-			//这里0为打开服务,并获取当前的雷达列表  1为关闭服务 
+			//这里0为打开服务,并获取当前的雷达列表  1为关闭服务
 			int index = atoi(str.substr(ret1 + 5, 1).c_str());
 			if (index == 0)
 			{
-				//g_checkservice->openService();
-				//g_checkservice->clearLidarsCache();
+				// g_checkservice->openService();
+				// g_checkservice->clearLidarsCache();
 				std::vector<DevConnInfo> data = g_checkservice->getLidarsList();
-				//printf("num:%d\n",data.size());
-				cJSON* arr = cJSON_CreateArray();
-				cJSON* point;
-				cJSON* item;
-				char  conn_ip[16] = { 0 };
+				// printf("num:%d\n",data.size());
+				cJSON *arr = cJSON_CreateArray();
+				cJSON *point;
+				cJSON *item;
+				char conn_ip[16] = {0};
 				short conn_port = 0;
 				for (int i = 0; i < data.size(); i++)
 				{
@@ -460,42 +480,117 @@ static void fn(struct mg_connection* c, int ev, void* ev_data, void* fn_data) {
 					item = cJSON_CreateNumber(conn_port);
 					cJSON_AddItemToObject(point, "conn_port", item);
 
-					char tmp[16] = { 0 };
+					char tmp[16] = {0};
 					sprintf(tmp, "%s", data.at(i).timeStr);
 					item = cJSON_CreateString(tmp);
 					cJSON_AddItemToObject(point, "time", item);
 
 					cJSON_AddItemToObject(arr, "", point);
 				}
-				char* out = jsonValue("SUCCESS", "", arr);
+				char *out = jsonValue("SUCCESS", "", arr);
 				mg_http_reply(c, 200, "", "%s", out);
 				free(out);
 				return;
-
 			}
 			else if (index == 1)
 			{
 				g_checkservice->closeService();
-				cJSON* item = cJSON_CreateArray();
-				char* out = jsonValue("SUCCESS", "", item);
+				cJSON *item = cJSON_CreateArray();
+				char *out = jsonValue("SUCCESS", "", item);
 				mg_http_reply(c, 200, "", "%s", out);
 				free(out);
 				return;
 			}
 			else
 			{
-				cJSON* item = cJSON_CreateArray();
-				char* out = jsonValue("ERROR", "arg is not current!", item);
+				cJSON *item = cJSON_CreateArray();
+				char *out = jsonValue("ERROR", "arg is not current!", item);
 				mg_http_reply(c, 200, "", "%s", out);
 				free(out);
 				return;
 			}
 		}
+		//获取当前雷达的防区
+		else if (mg_http_match_uri(hm, "/getZone"))
+		{
+			RecvZoneDatas results;
+			cJSON *items = cJSON_CreateObject();
+			char *out;
+			if (GetAlarmZone(g_cfg->thread_ID[1], results))
+			{
+				out = jsonValue("ERROR", "get zone failed!", items);
+				mg_http_reply(c, 200, "", "%s", out);
+				free(out);
+			}
+			cJSON *arr = cJSON_CreateArray();
+			cJSON *arr1;
+			cJSON *arr2;
+			cJSON *item = cJSON_CreateNumber(results.N);
+			cJSON_AddItemToObject(items, "N", item);
+			for (int i = 0; i < results.N; i++)
+			{
+				arr1 = cJSON_CreateObject();
+				arr2 = cJSON_CreateArray();
+				item = cJSON_CreateNumber(results.zoneData[i].type);
+				cJSON_AddItemToObject(arr1, "type", item);
+				item = cJSON_CreateNumber(results.zoneData[i].zoneID);
+				cJSON_AddItemToObject(arr1, "zoneID", item);
+				item = cJSON_CreateNumber(results.zoneData[i].outputID);
+				cJSON_AddItemToObject(arr1, "outputID", item);
+				item = cJSON_CreateNumber(results.zoneData[i].cnt);
+				cJSON_AddItemToObject(arr1, "cnt", item);
+				for (int j = 0; j < results.zoneData[i].cnt; j++)
+				{
+					double tt = results.zoneData[i].value[j];
+					item = cJSON_CreateNumber(tt);
+					cJSON_AddItemToObject(arr2, "", item);
+				}
+				cJSON_AddItemToObject(arr1, "value", arr2);
+				cJSON_AddItemToObject(arr, "", arr1);
+			}
+			cJSON_AddItemToObject(items, "values", arr);
+			out = jsonValue("SUCCESS", "", items);
+			mg_http_reply(c, 200, "", "%s", out);
+			free(out);
+		}
+		//设置当前雷达的防区   post
+		else if (mg_http_match_uri(hm, "/setZone"))
+		{
+			char result[1024] = {0};
+			snprintf(result, hm->body.len + 1, "%s", hm->body.ptr);
+			cJSON *root = cJSON_Parse(result);
+			zones results;
+			results.num = cJSON_GetArraySize(root);
+			for (int i = 0; i < results.num; i++)
+			{
+				cJSON *svalue = cJSON_GetArrayItem(root, i);
+				results.zoneArr[i].type = (POLYGON_TYPE)cJSON_GetObjectItem(svalue, "type")->valueint;
+				results.zoneArr[i].zoneID = cJSON_GetObjectItem(svalue, "zoneID")->valueint;
+				results.zoneArr[i].outputID = cJSON_GetObjectItem(svalue, "outputID")->valueint;
+				results.zoneArr[i].arg1 = cJSON_GetObjectItem(svalue, "arg1")->valueint;
+				results.zoneArr[i].arg2 = cJSON_GetObjectItem(svalue, "arg2")->valueint;
+				results.zoneArr[i].arg3 = cJSON_GetObjectItem(svalue, "arg3")->valueint;
+				results.zoneArr[i].arg4 = cJSON_GetObjectItem(svalue, "arg4")->valueint;
+			}
+			cJSON *item = cJSON_CreateArray();
+			char *out;
+			if (SetAlarmZone(g_cfg->thread_ID[1], results))
+			{
+				out = jsonValue("ERROR", "arg is not current!", item);
+			}
+			else
+			{
+				out = jsonValue("SUCCESS", "", item);
+			}
+			mg_http_reply(c, 200, "", "%s", out);
+			free(out);
+		}
 		//本地资源文件访问
-		else {
-			mg_http_serve_opts opts = { 0 };
+		else
+		{
+			mg_http_serve_opts opts = {0};
 			opts.root_dir = s_root_dir;
-			struct mg_http_message tmp = { 0 };
+			struct mg_http_message tmp = {0};
 			mg_http_serve_dir(c, hm, &opts);
 		}
 	}
@@ -507,7 +602,7 @@ static void fn(struct mg_connection* c, int ev, void* ev_data, void* fn_data) {
 	(void)fn_data;
 }
 
-void StringReplace(std::string& strBase, std::string strSrc, std::string strDes)
+void StringReplace(std::string &strBase, std::string strSrc, std::string strDes)
 {
 	std::string::size_type pos = 0;
 	std::string::size_type srcLen = strSrc.size();

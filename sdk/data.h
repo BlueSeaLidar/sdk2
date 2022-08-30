@@ -1,6 +1,5 @@
 ﻿#ifndef _LIDAR_DATA
 #define  _LIDAR_DATA
-
 /**
 
  * Copyright (C),  Pacecat:(C) <LanHai>,All right reserved
@@ -17,6 +16,13 @@
 
  */
 
+#include <stdint.h>
+#include <string>
+#include<stdio.h>
+#include <stdlib.h>
+#include"third_party/mongoose/mongoose.h"
+
+
 #ifdef _WIN32
 #include<Windows.h>
 #define GetDevInfo_MSG WM_USER+100
@@ -25,6 +31,8 @@
 #define Print_Point_MSG WM_USER+103
 #define Print_TimeStamp_MSG WM_USER+104
 #define Get_OnePoint_MSG WM_USER+105
+#define Get_ZONE_MSG WM_USER+106
+#define Set_ZONE_MSG WM_USER+110
 #elif __linux
 #include <unistd.h>
 enum msg_queue
@@ -33,7 +41,9 @@ enum msg_queue
 	SetDevInfo_MSG,
 	ctrl_MSG,
 	Print_Point_MSG,
-	Print_TimeStamp_MSG
+	Print_TimeStamp_MSG,
+	Get_ZONE_MSG,
+	Set_ZONE_MSG
 };
 struct CMD
 {
@@ -48,10 +58,6 @@ typedef struct {
 
 #endif
 
-#include <stdint.h>
-#include <string>
-#include <stdlib.h>
-#include"third_party/mongoose/mongoose.h"
 
 
 #define PI 3.1415926535898
@@ -64,9 +70,31 @@ typedef struct {
 #define MAX_POINTS 500
 
 #define BUF_SIZE 8*1024
-
+#define ZONE_SIZE 1024
 #define SLEEP_SIZE 5
 #define USER_SIZE  10
+
+#define ZS_PACK 0x5A53
+#define ZG_PACK 0x5A47
+
+#define GO_PACK 0x474F
+#define GT_PACK 0x4754
+#define G0_PACK 0x4730
+#define G1_PACK 0x4731
+#define GF_PACK 0x4746
+
+#define FH_PACK 0x4648
+#define F_PACK 0x0046
+#define PO_PACK 0x504F
+#define P0_PACK 0x5030
+#define PT_PACK 0x5054
+#define P1_PACK 0x5031
+#define GS_PACK 0x4753
+#define S_PACK 0x0053
+#define T_PACK 0x0054
+#define C_PACK 0x0043
+
+#define _TEST_    0     //test use
 //日志打印开关   debug  info
 #define _DEBUG_  1
 #define _INFO_   0
@@ -81,6 +109,15 @@ typedef struct {
 #else
 #define INFO_PR(...)
 #endif
+
+#define getbit(x,y)   ((x) >> (y)&1)
+#define setbit(x,y) x|=(1<<y)         //将X的第Y位置1
+#define clrbit(x,y) x&=~(1<<y)            //将X的第Y位清0
+
+typedef void (*printfMsg)(int, void*);
+typedef void (*send_cmd_uart_ptr)(int hCom, int mode, int sn, int len, const char* cmd);
+typedef void (*send_cmd_udp_ptr)(int fd_udp, const char* dev_ip, int dev_port, int cmd, int sn, int len, const void* snd_buf);
+
 
 
 //CN：心跳检测包 EN：Heartbeat detection package
@@ -106,12 +143,27 @@ struct PointData
 	DataPoint points[3000];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
 	uint32_t ts[2];				//CN:时间戳(秒和微秒)							EN:timestamps(Second and microseconds )
 };
-typedef void (*printfMsg)(int,void *);
+struct LidarMsgHdr
+{
+	char sign[4];  	// must be "LMSG"
+	uint32_t proto_version;	//协议版本，当前为0x101
+	char dev_sn[20];	//设备编号
+	uint32_t dev_id;  	//设备序号
+	uint32_t timestamp; 	//时间戳
+	uint32_t flags;	//消息类型
+	uint32_t events;	//消息内容的位组合
+	uint16_t id;	//消息序号
+	uint16_t extra;	//（当前激活防区 + 设备各功能状态 + 保留）长度
+	uint32_t zone_actived;	//当前激活防区（范围0~F）
+	uint8_t all_states[32];//	设备各功能状态
+	uint32_t reserved[11];	//保留
+};
+
 //运行配置
 struct RunConfig 
 {
 	// paramters
-	char type[16];//"uart"   or   "udp"
+	char type[16];//"uart"   or   "udp"  "vpc"
     char port[16];//端口名称
     int baud_rate;
     int local_port;       //CN:端口名称										 EN:port name
@@ -133,7 +185,7 @@ struct RunConfig
 	char group_ip[16];//组播IP
 	// control
 	bool should_quit;	  //CN:退出标志位									EN:quit flag	
-	char version[16];//硬件版本号
+	char version[64];//硬件版本号
 #ifdef __linux
 	int msgid;//消息队列ID
 	pthread_t thread;	  //CN:和雷达通信子线程								EN:Sub-thread: responsible for communicating with radar
@@ -144,11 +196,11 @@ struct RunConfig
 	int fd;//句柄
 	printfMsg  callback;//信息打印函数指针
 	PointData  pointdata;//单帧点数数据
+	LidarMsgHdr zone;//报警信息数据
+	int datatype;//数据的类型
 	long thread_ID[3];//主线程，数据子线程，服务子线程
 	int service_port;//本地服务启用端口
 	int is_open_service;//是否启用本地服务
-	//LidarCheckService  *checkservice;//查询本地的雷达列表
-	//LidarWebService* webservice;//web服务
 };
 
 
@@ -188,8 +240,8 @@ struct RawDataHdr3
 
 struct RawDataHdr7 {
 	uint16_t code;		//CN:帧头						EN:data frame header
-	uint16_t N;			//CN:扇区内这个分包的测距点数	EN:The number of ranging points for this subpacket in the sector
-	uint16_t whole_fan;	//CN:扇区内总测距点数			EN:The total number of ranging points in the sector
+	uint16_t N;			//CN:扇区内这个分包的测距点数	EN:The number of ranging points for this subpacket in the buffer
+	uint16_t whole_fan;	//CN:缓冲区内总测距点数			EN:The total number of ranging points in the sector
 	uint16_t ofset;		//CN:扇区偏移量					EN:sector offset
 	uint32_t beg_ang;	//CN:扇区起始角度				EN:Sector start angle
 	uint32_t end_ang;	//CN:扇区终止角度				EN:Sector end angle
@@ -316,6 +368,14 @@ struct EEpromV101
 	uint8_t functions_map[16];
 	uint8_t reserved[36];
 };
+//CN:UDP设置雷达参数时接收使用报文头	EN:UDP uses the header when setting radar parameters
+struct CmdHeader
+{
+	unsigned short sign; //CN:与硬件约定的标志位						EN:Flags consistent with hardware
+	unsigned short cmd;	 //CN:命令										EN：command
+	unsigned short sn;	//CN:随机数，发送报文和接收报文时验证是否一致	EN:Random numbers, verify consistency when sending and receiving messages
+	unsigned short len;	//CN:命令长度									EN:command length
+};
 
 
 /************************************************
@@ -359,8 +419,7 @@ bool parse_data(int len, unsigned char* buf,
 *************************************************/
 bool parse_data_x(int len, unsigned char* buf, 
 	int& span, int& is_mm, int& with_conf, 
-	RawData& dat, int& consume, int with_chk);
-
+	RawData& dat, int& consume, int with_chk, LidarMsgHdr& zone);
 
 /************************************************
 * @functionName:  data_process
@@ -416,9 +475,8 @@ void fan_data_process(const RawData& raw, const char* output_file, PointData&dat
 *************************************************/
 void whole_data_process(const RawData& raw, bool from_zero, const char* output_file, PointData& data);
 
-
+unsigned int stm32crc(unsigned int* ptr, unsigned int len);
 extern int pack_format;//CN:用来保存帧头的第二个字节，用来判断帧头数据类型	EN:Used to save the second byte of the frame header, used to determine the data type of the frame header
-extern char g_uuid[32];//CN:设备号  EN:device ID
 
 #ifdef _WIN32
 void gettimeofday(timeval* tv, void*);

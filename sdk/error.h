@@ -35,13 +35,13 @@
 #define GET_DEVPONIT_FAILED -42 //获取设备点位数据失败
 #define GET_DEVTIMESTAMP_FAILED -43 //获取设备时间戳失败
 #define GET_ONEPOINT_FAILED	    -44//获取一组雷达点位信息失败
-
+#define Get_ZONE_FAILED  -45 //读取防区失败
 
 //set
 #define SET_DEVINFO_FAILED -51//设置设备信息失败
 #define SET_DEV_FAILED  -52//设置设备启停重启测试失败
 #define SET_EVENT_FAILED  -53//设置事件同步失败
-
+#define Set_ZONE_FAILED  -54 //设置防区失败
 
 //net
 #define URL_ADDRESS_FAILED  -60//url地址不存在

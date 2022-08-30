@@ -416,17 +416,98 @@ bool GetData0x99(const RawDataHdr99& hdr, unsigned char* pdat, int with_chk, Raw
 	return true;
 }
 
+//int getDataZone(LidarMsgHdr* data, char* result)
+//{
+//	if (data->flags >= 0x100)
+//	{
+//		//说明有LMSG_ALARM报警信息
+//		if (getbit(data->events, 12) == 1)
+//		{
+//			INFO_PR("ALARM LEVEL:OBSERVE  MSG TYPE:%d ZONE ACTIVE:%x\n", data->flags, data->zone_actived);
+//		}
+//		if (getbit(data->events, 13) == 1)
+//		{
+//			INFO_PR("ALARM LEVEL:WARM  MSG TYPE:%d ZONE ACTIVE:%x\n", data->flags, data->zone_actived);
+//		}
+//		if (getbit(data->events, 14) == 1)
+//		{
+//			INFO_PR("ALARM LEVEL:ALARM  MSG TYPE:%d ZONE ACTIVE:%x\n", data->flags, data->zone_actived);
+//		}
+//		if (getbit(data->events, 15) == 1)
+//		{
+//			DEBUG_PR("ALARM COVER   MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 16) == 1)
+//		{
+//			DEBUG_PR("ALARM NO DATA   MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 17) == 1)
+//		{
+//			DEBUG_PR("ALARM ZONE NO ACTIVE  MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 18) == 1)
+//		{
+//			DEBUG_PR("ALARM SYSTEM ERROR  MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 19) == 1)
+//		{
+//			DEBUG_PR("ALARM RUN EXCEPTION  MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 20) == 1)
+//		{
+//			DEBUG_PR("ALARM NETWORK ERROR  MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 21) == 1)
+//		{
+//			DEBUG_PR("ALARM UPDATING  MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 22) == 1)
+//		{
+//			DEBUG_PR("ALARM ZERO POS ERROR  MSG TYPE:%d\n", data->flags);
+//		}
+//	}
+//	else if (data->flags % 2 == 1)
+//	{
+//		if (getbit(data->events, 0) == 1)
+//		{
+//			DEBUG_PR("LIDAR LOW POWER  MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 1) == 1)
+//		{
+//			DEBUG_PR("LIDAR  MOTOR STALL  MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 2) == 1)
+//		{
+//			DEBUG_PR("LIDAR RANGING MODULE TEMPERATURE HIGH  MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 3) == 1)
+//		{
+//			DEBUG_PR("LIDAR NETWORK ERROR  MSG TYPE:%d\n", data->flags);
+//		}
+//		if (getbit(data->events, 4) == 1)
+//		{
+//			DEBUG_PR("LIDAR RANGER MODULE NO OUTPUT  MSG TYPE:%d\n", data->flags);
+//		}
+//	}
+//}
 int pack_format = 0xce;
 
-char g_uuid[32] = "";
-// translate lidar raw data to ROS laserscan message
 bool parse_data_x(int len, unsigned char* buf, 
 	int& span, int& is_mm, int& with_conf, 
-	RawData& dat, int& consume, int with_chk) 
+	RawData& dat, int& consume, int with_chk, LidarMsgHdr &zone)
 {
 	int idx = 0;
 	while (idx < len-18)
 	{
+		//防区报警
+		if (memcmp(buf, "LMSG", 4) == 0)
+		{
+			LidarMsgHdr* hdr = (LidarMsgHdr*)(buf + idx);
+			memcpy(&zone, hdr, sizeof(LidarMsgHdr));
+			consume = idx + sizeof(LidarMsgHdr);
+			return true;
+		}
+
 		if (buf[idx] == 'S' && buf[idx+1] == 'T' && buf[idx+6] == 'E' && buf[idx+7] == 'D')
 		{
 			unsigned char flag = buf[idx + 2];
@@ -448,17 +529,6 @@ bool parse_data_x(int len, unsigned char* buf,
 			idx++;
 			continue;
 		}
-	
-		//if (idx > 24) for (int i=0; i<idx-22; i++) 
-		//{
-		//	// get product SN
-		//	if (memcmp(buf+i, "PRODUCT SN: ", 12) == 0)
-		//	{
-		//		memcpy(g_uuid, buf+i+12, 9);
-		//		g_uuid[9] = 0;
-		//		DEBUG_PR("found product SN : %s\n", g_uuid);
-		//	}
-		//}
 
 		RawDataHdr hdr;
 		memcpy(&hdr, buf+idx, HDR_SIZE);
@@ -569,17 +639,6 @@ bool parse_data(int len, unsigned char* buf,
 			continue;
 		}
 		pack_format = buf[idx];
-			
-		if (idx > 24) for (int i=0; i<idx-22; i++) 
-		{
-			// get product SN
-			if (memcmp(buf+i, "PRODUCT SN: ", 12) == 0)
-		       	{
-				memcpy(g_uuid, buf+i+12, 9);
-				g_uuid[9] = 0;
-				printf("found product SN : %s\n", g_uuid);
-			}
-		}
 
 		RawDataHdr hdr;
 		memcpy(&hdr, buf+idx, HDR_SIZE);
@@ -647,6 +706,35 @@ bool parse_data(int len, unsigned char* buf,
 
 	if (idx > 1024) consume = idx/2;
 	return false;
+}
+// CRC32
+unsigned int stm32crc(unsigned int* ptr, unsigned int len)
+{
+	unsigned int xbit, data;
+	unsigned int crc32 = 0xFFFFFFFF;
+	const unsigned int polynomial = 0x04c11db7;
+
+	for (unsigned int i = 0; i < len; i++)
+	{
+		xbit = 1 << 31;
+		data = ptr[i];
+		for (unsigned int bits = 0; bits < 32; bits++)
+		{
+			if (crc32 & 0x80000000)
+			{
+				crc32 <<= 1;
+				crc32 ^= polynomial;
+			}
+			else
+				crc32 <<= 1;
+
+			if (data & xbit)
+				crc32 ^= polynomial;
+
+			xbit >>= 1;
+		}
+	}
+	return crc32;
 }
 
 

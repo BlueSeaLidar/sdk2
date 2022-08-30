@@ -150,9 +150,9 @@ int main(int argc, char **argv)
 		cfg.service_port = atoi(argv[21]);
 		cfg.is_open_service = atoi(argv[22]);
 	}
-
 	//启动雷达设备 返回值非0表示失败  0表示可以正常接收包数据
 	int res = openDev(cfg);
+
 	if (res != 0)
 	{
 		return res;
@@ -167,7 +167,7 @@ int main(int argc, char **argv)
 	{
 
 	}
-
+	//以下为调用接口样例
 	//while (1)
 	//{
 	//	//设置运行前的参数
