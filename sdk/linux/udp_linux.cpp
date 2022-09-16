@@ -42,7 +42,6 @@
 #include "../error.h"
 #include "ZoneAlarm.h"
 
-
 send_cmd_udp_ptr CallBack_Udp;
 
 void send_cmd_udp_f(int fd_udp, const char *dev_ip, int dev_port,
@@ -89,7 +88,7 @@ void send_cmd_udp(int fd_udp, const char *dev_ip, int dev_port,
 				  int cmd, int sn,
 				  int len, const void *snd_buf)
 {
-	send_cmd_udp_f(fd_udp, dev_ip, dev_port, cmd, sn, len, snd_buf, true);
+	send_cmd_udp_f(fd_udp, dev_ip, dev_port, cmd, sn, len, snd_buf, false);
 }
 
 bool udp_talk_C_PACK(int fd_udp, const char *lidar_ip, int lidar_port,
@@ -143,8 +142,6 @@ bool udp_talk_C_PACK(int fd_udp, const char *lidar_ip, int lidar_port,
 				{
 					if (memcmp(payload + i, hdr_str, nhdr) == 0)
 					{
-						// memcpy(fetch, buf+i+nhdr, nfetch);
-						// fetch[nfetch] = 0;
 						if (nfetch > 0)
 						{
 							memset(fetch, 0, nfetch);
@@ -154,9 +151,6 @@ bool udp_talk_C_PACK(int fd_udp, const char *lidar_ip, int lidar_port,
 						return true;
 					}
 				}
-				// memcpy(fetch, "ok", 2);
-				// fetch[2] = 0;
-				// return true;
 			}
 		}
 	}
@@ -256,33 +250,38 @@ int setup_lidar(int fd_udp, const char *ip, int port,
 {
 	char buf[32];
 	int nr = 0;
+	//初始化默认开始旋转
+	// if(udp_talk_C_PACK(fd_udp, ip, port, 6, "LSTARH", 2, "OK", 0, NULL))
+	// {
+	// 	printf("set LiDAR LSTARH  OK \n");
+	// }
 	//硬件版本号
 	if (udp_talk_C_PACK(fd_udp, ip, port, 6, "LXVERH", 14, "MOTOR VERSION:", 15, buf))
 	{
 		memcpy(version, buf, 12);
-		printf("set LiDAR LXVERH  OK\n");
+		printf("set LiDAR LXVERH  OK %s\n", version);
 	}
-	if (udp_talk_C_PACK(fd_udp, ip, port, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH", 10, "SET LiDAR ", 9, buf))
+	if (udp_talk_C_PACK(fd_udp, ip, port, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH", 2, "OK", 0, NULL))
 	{
 		printf("set LiDAR unit_is_mm  OK\n");
 	}
 
-	if (udp_talk_C_PACK(fd_udp, ip, port, 6, with_confidence == 0 ? "LNCONH" : "LOCONH", 6, "LiDAR ", 5, buf))
+	if (udp_talk_C_PACK(fd_udp, ip, port, 6, with_confidence == 0 ? "LNCONH" : "LOCONH", 2, "OK", 0, NULL))
 	{
 		printf("set LiDAR with_confidence OK\n");
 	}
-	if (!udp_talk_C_PACK(fd_udp, ip, port,
-						 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H",
-						 2, "OK", 0, NULL))
+	if (udp_talk_C_PACK(fd_udp, ip, port,
+						6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H",
+						2, "OK", 0, NULL))
 	{
-		printf("set deshadow to %d fail!\n", with_deshadow);
+		printf("set deshadow to %d OK!\n", with_deshadow);
 	}
 
-	if (!udp_talk_C_PACK(fd_udp, ip, port, 6,
-						 with_smooth == 0 ? "LSSS0H" : "LSSS1H",
-						 2, "OK", 0, NULL))
+	if (udp_talk_C_PACK(fd_udp, ip, port, 6,
+						with_smooth == 0 ? "LSSS0H" : "LSSS1H",
+						2, "OK", 0, NULL))
 	{
-		printf("set smooth to %d fail!\n", with_smooth);
+		printf("set smooth to %d OK!\n", with_smooth);
 	}
 
 	if (resample == 0)
@@ -296,24 +295,20 @@ int setup_lidar(int fd_udp, const char *ip, int port,
 
 	if (buf[0])
 	{
-		if (!udp_talk_C_PACK(fd_udp, ip, port, 10, buf, 0, "OK", 0, NULL))
+		if (udp_talk_C_PACK(fd_udp, ip, port, 10, buf, 2, "OK", 0, NULL))
 		{
-			printf("set LiDAR resample to %d fail!\n", resample);
+			printf("set LiDAR resample to %d OK!\n", resample);
 		}
 	}
-	// setup rpm
-	if (init_rpm > 300 && init_rpm < 3000)
+
+	for (int i = 0; i < 10; i++)
 	{
-		char result[3] = {0};
-		for (int i = 0; i < 10; i++)
+		char cmd[32];
+		sprintf(cmd, "LSRPM:%04dH", init_rpm);
+		if (udp_talk_C_PACK(fd_udp, ip, port, strlen(cmd), cmd, 2, "OK", 0, NULL))
 		{
-			char cmd[32];
-			sprintf(cmd, "LSRPM:%04dH", init_rpm);
-			if (udp_talk_S_PACK(fd_udp, ip, port, strlen(cmd), cmd, result))
-			{
-				printf("set RPM to %d,result:%s\n", init_rpm, result);
-				break;
-			}
+			printf("set RPM to %d  OK\n", init_rpm);
+			break;
 		}
 	}
 	return 0;
@@ -453,10 +448,10 @@ void *lidar_thread_proc_udp(void *param)
 	RunConfig *cfg = (RunConfig *)param;
 	PointData tmp;
 	memset(&tmp, 0, sizeof(PointData));
-	int zoneFlag = 0;//读写防区标志位    0为正常运行  1为读  2为写
+	int zoneFlag = 0; //读写防区标志位    0为正常运行  1为读  2为写
 	int zoneSN = rand();
-	CallBack_Udp=send_cmd_udp;
-	ZoneAlarm *zonealarm = new ZoneAlarm(cfg->fd, true, cfg->lidar_ip, cfg->lidar_port,(void*)CallBack_Udp);
+	CallBack_Udp = send_cmd_udp;
+	ZoneAlarm *zonealarm = new ZoneAlarm(cfg->fd, true, cfg->lidar_ip, cfg->lidar_port, (void *)CallBack_Udp);
 
 	if (cfg->is_group_listener == 1)
 	{
@@ -478,9 +473,6 @@ void *lidar_thread_proc_udp(void *param)
 	}
 	else
 	{
-		//初始化默认开始旋转
-		char tmp[12] = {0};
-		udp_talk_C_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 6, "LSTARH", 2, "OK", 11, tmp);
 		setup_lidar(cfg->fd, cfg->lidar_ip, cfg->lidar_port,
 					cfg->unit_is_mm, cfg->with_confidence,
 					cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
@@ -603,11 +595,11 @@ void *lidar_thread_proc_udp(void *param)
 					memset(&zone, 0, sizeof(LidarMsgHdr));
 					bool is_pack;
 					int consume;
-					if (cfg->unit_is_mm && cfg->with_confidence)
+					if (cfg->data_bytes==3)
 					{
 						is_pack = parse_data_x(len, buf,
 											   fan_span, cfg->unit_is_mm, cfg->with_confidence,
-											   dat, consume, cfg->with_chk,zone);
+											   dat, consume, cfg->with_chk, zone);
 					}
 					else
 					{
@@ -624,15 +616,15 @@ void *lidar_thread_proc_udp(void *param)
 							if (zone.timestamp != 0)
 								memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
 
-							if (cfg->output_360)
+							if (!cfg->output_360)
 							{
-								// 90个点一个扇区，分20次发
+								// 每个扇区发送
 								memset(&tmp, 0, sizeof(PointData));
 								fan_data_process(dat, cfg->output_file, tmp);
 							}
 							else
 							{
-								// 1800个点位，全部扇区
+								// 整圈
 								whole_data_process(dat, cfg->from_zero, cfg->output_file, tmp);
 							}
 							if (tmp.N > 0)
@@ -766,4 +758,3 @@ int open_socket_port(RunConfig &cfg)
 	INFO_PR("\033[1;32m----> start udp %s:%d udp %d\033[0m\n", cfg.lidar_ip, cfg.lidar_port, fd_udp);
 	return fd_udp;
 }
-

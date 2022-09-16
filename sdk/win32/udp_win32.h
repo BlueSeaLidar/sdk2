@@ -20,7 +20,7 @@
 #include"../data.h"
 
 int open_socket_port(RunConfig& cfg);
-int setup_lidar(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, char* version);
+int setup_lidar(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char* version);
 int setup_lidar_extre(int fd_udp, const char* ip, int port, DevData& data);
 DWORD  WINAPI  lidar_thread_proc_udp(void* param);
 

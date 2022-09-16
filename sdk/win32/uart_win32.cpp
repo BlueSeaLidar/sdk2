@@ -25,8 +25,11 @@ bool uart_talk(HANDLE hCom, int n, const char* cmd,int nhdr, const char* hdr_str
 	{
 		if (memcmp(buf + i, hdr_str, nhdr) == 0)
 		{
-			memcpy(fetch, buf + i + nhdr, nfetch);
-			fetch[nfetch] = 0;
+			if (nfetch > 0)
+			{
+				memcpy(fetch, buf + i + nhdr, nfetch);
+				fetch[nfetch] = 0;	
+			}
 			return true;
 		}
 	}
@@ -340,24 +343,24 @@ int setup_lidar(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, 
 		printf("set LiDAR LXVERH  OK\n");
 	}
 	//Set the lidar returned data unit   CM or MM
-	if (uart_talk(hCom, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",	10, "SET LiDAR ", 9, buf))
+	if (uart_talk(hCom, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",	2, "OK", 0, NULL))
 	{
-		printf("set LiDAR unit to %s\n", buf);
+		printf("set LiDAR unit OK\n");
 	}
 	//set lidar confidence state   LNCONH close   LOCONH open
-	if (uart_talk(hCom, 6, with_confidence == 0 ? "LNCONH" : "LOCONH",	6, "LiDAR ", 5, buf))
+	if (uart_talk(hCom, 6, with_confidence == 0 ? "LNCONH" : "LOCONH",	2, "OK", 0, NULL))
 	{
-		printf("set LiDAR confidence to %s\n", buf);
+		printf("set LiDAR confidence OK\n");
 	}
 	//set  de-deshadow state    LFFF0H:close  LFFF1H:open
-	if (uart_talk(hCom, 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H",	6, "LiDAR ", 5, buf))
+	if (uart_talk(hCom, 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H",	2, "OK", 0, NULL))
 	{
-		printf("set deshadow to %d\n", with_deshadow);
+		printf("set deshadow OK\n");
 	}
 	//set  de-smooth     LSSS0H:close   LSSS1H:open
-	if (uart_talk(hCom, 6, with_smooth == 0 ? "LSSS0H" : "LSSS1H",	6, "LiDAR ", 5, buf))
+	if (uart_talk(hCom, 6, with_smooth == 0 ? "LSSS0H" : "LSSS1H",	2, "OK", 0, NULL))
 	{
-		printf("set smooth to %d\n", with_smooth);
+		printf("set smooth to OK\n");
 	}
 	//LSRES:000H :set default Angular resolution  LSRES:001H :fix Angular resolution  
 	if (resample == 0)
@@ -368,10 +371,9 @@ int setup_lidar(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, 
 		buf[0] = 0;
 
 	if (buf[0]) {
-		char buf2[32];
-		if (uart_talk(hCom, 10, buf, 15, "set resolution ", 1, buf2))
+		if (uart_talk(hCom, 10, buf, 15, "set resolution ", 0, NULL))
 		{
-			printf("set LiDAR resample to %d\n", resample);
+			printf("set LiDAR resample OK\n");
 		}
 	}
 	// setup rpm  (The specific model range is different)
@@ -381,9 +383,9 @@ int setup_lidar(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, 
 		{
 			char cmd[32];
 			sprintf(cmd, "LSRPM:%dH", init_rpm);
-			if (uart_talk(hCom, strlen(cmd), cmd, 3, "RPM", 5, buf))
+			if (uart_talk(hCom, strlen(cmd), cmd, 3, "RPM", 0, NULL))
 			{
-				printf("set RPM to %s\n", buf);
+				printf("set RPM to %d  OK\n", init_rpm);
 				break;
 			}
 		}
@@ -566,7 +568,6 @@ DWORD  WINAPI  lidar_thread_proc_uart(void*  param)
 	CallBack_Uart = send_cmd_uart;
 	ZoneAlarm *zonealarm=new ZoneAlarm(cfg->fd,false, (void*)CallBack_Uart);
 	PointData tmp;//临时存储结构体变量
-	memset(&tmp, 0, sizeof(PointData));
 	 //默认启动雷达
 	DWORD dwWritenSize = 0;
 	if(strcmp(cfg->type, "uart") == 0)
@@ -656,8 +657,8 @@ DWORD  WINAPI  lidar_thread_proc_uart(void*  param)
 						{
 							memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
 						}
-						memset(&tmp, 0, sizeof(DataPoint));
-						data_process(dat, cfg->output_file, tmp);
+						memset(&tmp, 0, sizeof(PointData));
+						data_process(dat, cfg->output_file, tmp, cfg->from_zero);
 						//执行回调函数
 						if (tmp.N > 0)
 						{

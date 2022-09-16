@@ -55,19 +55,26 @@ function getPointsData() {
     var jsondatas = eval("(" + data + ")");
     $.each(jsondatas.data, function (i, n) {
       pointsData[i] = [n.distance * 1000, n.angle];
-      //console.log("dis:" + n.distance + "  angle:" + n.angle);
+      console.log("dis:" + n.distance + "  angle:" + n.angle);
     })
     option.series[0].symbolSize = size;
-    option.series[0].data=pointsData;
-    //防区参数获取
-    zone_flag = jsondatas.zone_flag;
-    zone_events = jsondatas.zone_events;
-    zone_actived = jsondatas.zone_actived;
-    ShowZoneMSG(zone_flag, zone_events, zone_actived);
-    myChart.setOption(option, false);
+    option.series[0].data = pointsData;
     $('#index').attr("value", jsondatas.N);
-    $('#timestamp_s').attr("value", jsondatas.ts[0]);
-    $('#timestamp_us').attr("value", jsondatas.ts[1]);
+    if (type != "uart") {
+        if(zone_flag!=jsondatas.zone_flag ||zone_events!=jsondatas.zone_events ||zone_actived!=jsondatas.zone_actived)
+        {
+            zone_flag = jsondatas.zone_flag;
+            zone_events = jsondatas.zone_events;
+            zone_actived = jsondatas.zone_actived;
+            ShowZoneMSG(zone_flag, zone_events, zone_actived);
+        }
+      $('#timestamp_s').attr("value", jsondatas.ts[0]);
+      $('#timestamp_us').attr("value", jsondatas.ts[1]);
+    }
+    //防区参数获取
+
+    myChart.setOption(option, false);
+
 
   });
 };
@@ -366,7 +373,7 @@ option = {
   angleAxis: {
     type: 'value',
     boundaryGap: false,
-    startAngle: 90,
+    startAngle: 0,
     min: 0,
     max: 360,
     interval: 30,
@@ -380,7 +387,7 @@ option = {
   radiusAxis: {
     type: 'value',
     min: 0,//'dataMin',   根据获得的数据显示会导致波动过大，不方便观察
-    max: 1000,//'dataMax',
+    max: 5000,//'dataMax',
     axisLine: {
       show: false
     },
@@ -473,15 +480,15 @@ function MouseWheelHandler(e) {
   scale = 320 / tmp * 1.00;
   //将当前的防区图形，根据鼠标的缩放而缩放(仅限于矩形和扇形)
   var jsonarray = eval(option.graphic);
-  for(var i=0;i<zoneID;i++){
-    if(jsonarray[i+1].type=='rect'){
-      jsonarray[i+1].shape.x=480+(jsonarray[i+1].shape.x-480)/old_scale*scale
-      jsonarray[i+1].shape.y=480+(jsonarray[i+1].shape.y-480)/old_scale*scale
-      jsonarray[i+1].shape.width=(jsonarray[i+1].shape.width)/old_scale*scale
-      jsonarray[i+1].shape.height=(jsonarray[i+1].shape.height)/old_scale*scale
-    }else if(jsonarray[i+1].type=='sector'){
-      jsonarray[i+1].shape.r=(jsonarray[i+1].shape.r)/old_scale*scale
-      jsonarray[i+1].shape.r0=(jsonarray[i+1].shape.r0)/old_scale*scale
+  for (var i = 0; i < zoneID; i++) {
+    if (jsonarray[i + 1].type == 'rect') {
+      jsonarray[i + 1].shape.x = 480 + (jsonarray[i + 1].shape.x - 480) / old_scale * scale
+      jsonarray[i + 1].shape.y = 480 + (jsonarray[i + 1].shape.y - 480) / old_scale * scale
+      jsonarray[i + 1].shape.width = (jsonarray[i + 1].shape.width) / old_scale * scale
+      jsonarray[i + 1].shape.height = (jsonarray[i + 1].shape.height) / old_scale * scale
+    } else if (jsonarray[i + 1].type == 'sector') {
+      jsonarray[i + 1].shape.r = (jsonarray[i + 1].shape.r) / old_scale * scale
+      jsonarray[i + 1].shape.r0 = (jsonarray[i + 1].shape.r0) / old_scale * scale
     }
   }
   option.graphic = jsonarray;
@@ -535,12 +542,12 @@ layui.use(['element', 'layer', 'form', 'table'], function () {
 });
 /***************************************防区相关函数***********************************/
 function readZone() {
-  
+
   $.get("/getZone", function (data, status) {
     var jsondatas = eval("(" + data + ")");
     var N = jsondatas.data.N;
-    if(N<=0) return ;
-    
+    if (N <= 0) return;
+
     for (var i = 0; i < N; i++) {
       var type = jsondatas.data.values[i].type;
       if (type != 2 && type != 4) return;
@@ -601,15 +608,15 @@ function drawZone(ZoneGraphics, zoneSerial, echartL, echartT, echartR, echartB, 
       silent: false,
       shape:
       {
-        // x: 480 + echartL * 1 * scale,
-        // y: 480 + echartT * 1 * scale,
-        // width: (echartR - echartL) * scale,
-        // height: (echartT - echartB) * -1 * scale
+         x: 480 + echartL * 1 * scale,
+         y: 480 + echartT * 1 * scale,
+         width: (echartR - echartL) * scale,
+         height: (echartT - echartB) * -1 * scale
         //这里以90度为0度，根据
-        x: 480 + echartT * 1 * scale,
-        y: 480 - echartL * 1 * scale,
-        width: (echartT - echartB) * -1 * scale,
-        height: -(echartR - echartL) * scale,
+        //x: 480 + echartT * 1 * scale,
+        //y: 480 - echartL * 1 * scale,
+        //width: (echartT - echartB) * -1 * scale,
+        //height: -(echartR - echartL) * scale,
       },
       style: {
         fill: '#fff0',
@@ -636,8 +643,10 @@ function drawZone(ZoneGraphics, zoneSerial, echartL, echartT, echartR, echartB, 
         cy: 480,
         r: echartR * 1 * scale,
         r0: echartB * 1 * scale,
-        startAngle: -Math.PI / 2 + echartL / 1800 * Math.PI,
-        endAngle: -Math.PI / 2 + echartT / 1800 * Math.PI,
+        //startAngle: -Math.PI / 2 + echartL / 1800 * Math.PI,
+        //endAngle: -Math.PI / 2 + echartT / 1800 * Math.PI，
+        startAngle:  echartL / 1800 * Math.PI,
+        endAngle:  echartT / 1800 * Math.PI,
         clockwise: true
       },
       style: {
@@ -684,7 +693,7 @@ function getbit(x, y) {
 }
 function ShowZoneMSG(flag, event, active) {
 
-  
+
   var text = '防区:' + active + '\n';
   if (flag % 2 == 1) {
     //错误信息

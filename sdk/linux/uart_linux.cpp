@@ -762,7 +762,7 @@ void *lidar_thread_proc_uart(void *param)
 						if (zone.timestamp != 0)
 							memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
 
-						if (cfg->output_360)
+						if (!cfg->output_360)
 						{
 							memset(&tmp, 0, sizeof(PointData));
 							fan_data_process(dat, cfg->output_file, tmp);

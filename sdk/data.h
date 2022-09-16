@@ -97,7 +97,7 @@ typedef struct {
 #define _TEST_    0     //test use
 //日志打印开关   debug  info
 #define _DEBUG_  1
-#define _INFO_   0
+#define _INFO_   1
 #if  _DEBUG_ 
 #define DEBUG_PR(...) printf(__VA_ARGS__)
 #else
@@ -140,7 +140,7 @@ struct DataPoint
 struct PointData
 {
 	unsigned short N;			//CN:扇区内测距点数								EN:The number of ranging points in the sector
-	DataPoint points[3000];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
+	DataPoint points[10000];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
 	uint32_t ts[2];				//CN:时间戳(秒和微秒)							EN:timestamps(Second and microseconds )
 };
 struct LidarMsgHdr
@@ -176,7 +176,7 @@ struct RunConfig
 	int data_bytes;		  //CN:数据打包模式，2：2字节， 3：3字节   			  EN:Data packing mode, 2: 2 bytes, 3: 3 bytes Special instructions: 2 for the old model, 3 for the new model
 	int rpm;			  //CN:转速											EN:Rotating speed
 	int output_scan;	  //CN:是否打印 (0：不打印   1：打印 )				 EN:Whether to print (0: not print 1: print)
-	int output_360;		  //CN:扇形打印(0:完成的  1：部分扇形打印)			 EN:Fan printing (0: Completed 1: Partial fan printing)
+	int output_360;		  //CN:扇形打印(0:部分扇形打印  1：完成的)			 EN:Fan printing (0: Partial fan printing 1: Completed)
 	int from_zero;		  //CN:角度显示坐标   0  -180°-180°   1  0°到360度  EN:Angle display coordinates 0 -180°-180° 1 0° to 360°
 	char output_file[256];//CN:数据保存文件绝对路径							EN:Data save file absolute path
 	char lidar_ip[256];	  //CN:雷达的IP地址									EN:Radar IP address
@@ -263,10 +263,10 @@ struct FanSegment
 };
 
 struct RawDataHdr99 {
-	uint16_t code;			//CN:帧头						EN:data frame header
+	uint16_t code;			//CN:帧头，固定为0x99FA			EN:Frame header, fixed at 0x99FA
 	uint16_t N;				//CN:扇区内这个分包的测距点数	EN:The number of ranging points for this subpacket in the sector
 	uint16_t from;			//CN:扇区起始角度				EN:Sector start angle
-	uint16_t total;			//CN:扇区角度					EN:Total Sector Angle
+	uint16_t total;			//CN:一整圈数据点个数			EN:The number of data points in a full circle
 	uint32_t flags;			//CN:状态开关标识				EN:status switch flag
 	uint32_t timestamp;		//CN:时间戳						EN:timestamp 
 	uint32_t dev_no;		//CN:设备号						EN:device ID
@@ -274,17 +274,17 @@ struct RawDataHdr99 {
 };
 
 
-
+//Special instructions : fbase, first, last, fend are empty by default, only special models have data
 struct RawData
 {
 	unsigned short code;		//CN:帧头										EN:data frame header
 	unsigned short N;			//CN:扇区内测距点数								EN:The number of ranging points in the sector
-	unsigned short angle;		//CN:当前扇区累加的角度							EN:The accumulated angle of the current sector 
-	unsigned short span;		//CN:当前扇区的角度								EN:The angle of the current sector
-	unsigned short fbase;		//CN:扇区起始偏差								EN:Sector start offset
-	unsigned short first;		//CN:第一个点角度								EN:first point angle
-	unsigned short last;		//CN:最后一个点角度								EN:last point angle
-	unsigned short fend;		//CN:扇区终止偏差								EN:Sector end offset
+	unsigned short angle;		//CN:当前扇区的起始角度	*10						EN:The starting angle of the current sector *10
+	unsigned short span;		//CN:扇区的总角度(扇区终止角度-扇区起始角度)	EN:The total angle of the sector (sector end angle - sector start angle)
+	unsigned short fbase;		//CN:扇区起始偏差 （NULL）						EN:Sector start offset（NULL）
+	unsigned short first;		//CN:第一个点角度  (NULL)						EN:first point angle（NULL）
+	unsigned short last;		//CN:最后一个点角度(NULL)						EN:last point angle（NULL）
+	unsigned short fend;		//CN:扇区终止偏差(NULL)							EN:Sector end offset（NULL）
 	// short ros_angle;	// 0.1 degree
 	DataPoint points[MAX_POINTS];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
 	uint32_t ts[2];				//CN:时间戳(秒和毫秒)							EN:timestamps(Second and millisecond )
@@ -448,7 +448,7 @@ void data_process2(const RawData& raw, const char* output_file, PointData& tmp);
 * @return:        Null
 * @others:        Null
 *************************************************/
-void data_process(const RawData& raw, const char* output_file, PointData& data);
+void data_process(const RawData& raw, const char* output_file, PointData& data, int from_zero);
 /************************************************
 * @functionName:  data_process
 * @date:          2022-03-25

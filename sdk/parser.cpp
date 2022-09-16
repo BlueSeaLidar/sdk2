@@ -118,7 +118,6 @@ static void PackFanData(FanSegment* seg, RawData& rdat)
 	dat->fend = 0;
 
 	DecTimestamp(seg->hdr.timestamp, dat->ts);
-	//printf("%d %d.%d\n", dat->angle, dat->ts[0], dat->ts[1]);
 
 	int count = 0;
 	while (seg)
@@ -150,18 +149,6 @@ FanSegment* g_fan_segs = NULL;
 static bool GetData0xC7(const RawDataHdr7& hdr, uint8_t* pdat, bool with_chk, RawData& dat)
 {
 	bool got = false;
-#if 0
-	if (parser->dev_id != ANYONE && hdr.dev_id != parser->dev_id) {
-		static time_t last = 0;
-		time_t t = time(NULL);
-		if (t > last) {
-			printf("device id [%d] != my id [%d]\n", hdr.dev_id, parser->dev_id);
-			last = t;
-		}
-		// not my data
-		return NULL;
-	}
-#endif
 
 	FanSegment* fan_seg = GetFanSegment(hdr, pdat, with_chk);
 	if (!fan_seg) {
@@ -232,12 +219,6 @@ static bool GetData0xC7(const RawDataHdr7& hdr, uint8_t* pdat, bool with_chk, Ra
 			delete seg;
 			seg = g_fan_segs;
 		}
-
-		//if (dat) {
-			//SetTimeStamp(dat, );
-				//dat->ros_angle = LidarAng2ROS(dat->angle + dat->span);
-		//}
-		//return dat;
 	}
 	return got;
 }
@@ -500,15 +481,15 @@ bool parse_data_x(int len, unsigned char* buf,
 	while (idx < len-18)
 	{
 		//防区报警
-		if (memcmp(buf, "LMSG", 4) == 0)
+		/*if (memcmp(buf, "LMSG", 4) == 0)
 		{
 			LidarMsgHdr* hdr = (LidarMsgHdr*)(buf + idx);
 			memcpy(&zone, hdr, sizeof(LidarMsgHdr));
 			consume = idx + sizeof(LidarMsgHdr);
 			return true;
-		}
+		}*/
 
-		if (buf[idx] == 'S' && buf[idx+1] == 'T' && buf[idx+6] == 'E' && buf[idx+7] == 'D')
+		if (buf[idx] == 'S' && buf[idx + 1] == 'T' && buf[idx + 6] == 'E' && buf[idx + 7] == 'D')
 		{
 			unsigned char flag = buf[idx + 2];
 			span = 360;
@@ -531,27 +512,28 @@ bool parse_data_x(int len, unsigned char* buf,
 		}
 
 		RawDataHdr hdr;
-		memcpy(&hdr, buf+idx, HDR_SIZE);
-		if(buf[idx] == 0x99){
+		memcpy(&hdr, buf + idx, HDR_SIZE);
+		if (buf[idx] == 0x99) {
 			RawDataHdr99 hdr99;
-			memcpy(&hdr99, buf+idx, HDR99_SIZE);
+			memcpy(&hdr99, buf + idx, HDR99_SIZE);
 			int hdr99_span = hdr99.N * 3600 / hdr99.total;
-			if(hdr99_span % 90 != 0){
-				DEBUG_PR("bad angle %d \n", hdr99_span);
+			if (hdr99_span % 90 != 0) {
+				printf("bad angle %d \n", hdr99_span);
 				idx += 2;
 				continue;
 			}
-		}else if(buf[idx] != 0xc7){
-			if(hdr.angle % 90 != 0){
-				DEBUG_PR("bad angle %d \n", hdr.angle);
+		}
+		else if (buf[idx] != 0xc7) {
+			if (hdr.angle % 90 != 0) {
+				printf("bad angle %d \n", hdr.angle);
 				idx += 2;
-				continue; 
+				continue;
 			}
 		}
 
-		if (hdr.N > MAX_POINTS || hdr.N < 10) 
+		if (hdr.N > MAX_POINTS || hdr.N < 10)
 		{
-			DEBUG_PR("points number %d seem not correct\n", hdr.N);
+			printf("points number %d seem not correct\n", hdr.N);
 			idx += 2;
 			continue;
 		}
@@ -559,8 +541,8 @@ bool parse_data_x(int len, unsigned char* buf,
 		bool got;
 		if (buf[idx] == 0xce && idx + HDR_SIZE + hdr.N * 3 + 2 <= len)
 		{
-			got = GetData0xCE(hdr, buf + idx + HDR_SIZE, 
-				hdr.angle == 3420 ? span*2 : span, 
+			got = GetData0xCE(hdr, buf + idx + HDR_SIZE,
+				hdr.angle == 3420 ? span * 2 : span,
 				with_chk, dat);
 			consume = idx + HDR_SIZE + 3 * hdr.N + 2;
 		}
@@ -593,17 +575,17 @@ bool parse_data_x(int len, unsigned char* buf,
 			got = GetData0xC7(hdr7, buf + idx, with_chk, dat);
 
 			consume = idx + HDR7_SIZE + 5 * hdr.N + 2;
-		} 		
+		}
 		else if (buf[idx] == 0x99 && idx + HDR99_SIZE + hdr.N * 3 + 2 <= len)
 		{
 			RawDataHdr99 hdr99;
 			memcpy(&hdr99, buf + idx, HDR99_SIZE);
-			
+
 			got = GetData0x99(hdr99, buf + idx, with_chk, dat);
 
 			consume = idx + HDR99_SIZE + 3 * hdr.N + 2;
-		} 
-		
+		}
+
 		else {
 			// data packet not complete
 			break;
@@ -611,7 +593,7 @@ bool parse_data_x(int len, unsigned char* buf,
 		return got;
 	}
 
-	if (idx > 1024) consume = idx/2;
+	if (idx > 1024) consume = idx / 2;
 	return false;
 }
 

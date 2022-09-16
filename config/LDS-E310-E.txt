@@ -13,8 +13,8 @@ with_deshadow:1
 resample:200
 rpm:600
 output_scan:1
-output_360:0
-from_zero:0
+output_360:1
+from_zero:1
 output_file:/tmp/udp_data2.txt
 is_group_listener:0
 group_ip:224.0.0.99

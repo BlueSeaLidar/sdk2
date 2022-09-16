@@ -23,7 +23,7 @@ void CallBackMsg(int msgtype, void* param)
 		PointData* pointdata = (PointData*)param;
 		for (int i = 0; i < pointdata->N; i++)
 		{
-			INFO_PR("%.5f\t%.3f\t%d\n", pointdata->points[i].angle, pointdata->points[i].distance, pointdata->points[i].confidence);
+			//INFO_PR("%.5f\t%.3f\t%d\n", pointdata->points[i].angle, pointdata->points[i].distance, pointdata->points[i].confidence);
 		}
 	}
 	//获取雷达时间戳打印信息
@@ -114,6 +114,8 @@ int main(int argc, char **argv)
 	}
 	RunConfig cfg;
 	memset(&cfg, 0, sizeof(RunConfig));
+	//传入打印函数指针
+	cfg.callback = CallBackMsg;
 	//传入配置文件的方式
 	if (argc == 2)
 	{
@@ -160,8 +162,7 @@ int main(int argc, char **argv)
 	if (cfg.is_open_service)
 		OpenLocalService(cfg);
 
-	//传入打印函数指针
-	cfg.callback = CallBackMsg;
+	
 	printf("Please control it through a browser and enter the default address: http://localhost:8888\n");
 	while (1)
 	{

@@ -302,7 +302,9 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 			memcpy(&tmp, &g_cfg->pointdata, sizeof(PointData));
 			if (tmp.N <= 0 || tmp.N > 10000)
 			{
-				char *out = jsonValue("ERROR", "get point number unusual", NULL);
+				char message[64] = { 0 };
+				sprintf(message, "get point number unusual %d", tmp.N);
+				char *out = jsonValue("ERROR", message, NULL);
 				mg_http_reply(c, 200, "", "%s", out);
 				free(out);
 				return;

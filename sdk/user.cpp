@@ -25,24 +25,26 @@
 #include <signal.h>
 using namespace std;
 
-// from_zero true时从[0，pi），false时[-pi,pi)
-bool from_zero = false;
-int factor = from_zero ? 2 : 1;
+
+int factor = 2;
 vector<RawData*> datas;
 
 
 // 获取360°完整扇区的点
-void data_process(const RawData &raw, const char* output_file, PointData& tmp)
+void data_process(const RawData &raw, const char* output_file, PointData& tmp, int from_zero)
 {
 	RawData *data = new RawData;
 	memcpy(data, &raw, sizeof(RawData));
 	datas.push_back(data);
-
-	if (raw.angle + raw.span != factor * 1800)
+	if ((from_zero&& raw.angle==0) ||(!from_zero&&raw.angle + raw.span == 1800))
+	{
+		//from_zero:true,A lap of data starts at 0 degrees
+		//from_zero:false,A lap of data starts at 180 degrees
+	}
+	else
 	{
 		return;
 	}
-
 	bool bfirst = true;
 	uint32_t timestamp[2] = {0};
 	int count = 0, n = 0, angles = 0;
@@ -129,9 +131,13 @@ void whole_data_process(const RawData &raw, bool from_zero, const char *output_f
 	RawData *data = new RawData;
 	memcpy(data, &raw, sizeof(RawData));
 	whole_datas.push_back(data);
-
-	int factor = from_zero ? 2 : 1;
-	if (raw.angle + raw.span != factor * 1800)
+	//printf("N:%d angle:%d  first:%d  last:%d  span:%d  fbase:%d fend:%d\n", raw.N, raw.angle, raw.first, raw.last, raw.span, raw.fbase, raw.fend);
+	if ((from_zero && raw.angle == 0) || (!from_zero && raw.angle + raw.span == 1800))
+	{
+		//from_zero:true,A lap of data starts at 0 degrees
+		//from_zero:false,A lap of data starts at 180 degrees
+	}
+	else
 	{
 		return;
 	}
@@ -199,7 +205,7 @@ void whole_data_process(const RawData &raw, bool from_zero, const char *output_f
 			for (int i = 0; i < count; i++)
 			{
 				fprintf(fp, "%.5f\t%.3f\t%d\n",
-						points[i].angle > factor * PI ? points[i].angle - 2 * PI : points[i].angle,
+						points[i].angle,
 						points[i].distance, points[i].confidence);
 			}
 			fclose(fp);

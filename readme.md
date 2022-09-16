@@ -23,7 +23,9 @@ Generate a solution
 
 **Special instructions: Please refer to the corresponding product's documentation to select the specified configuration file, and ensure that the software can be called normally only after the hardware works normally.**
 
-
+## config file from windows to linux ##
+	vim xxxx.txt
+	set ff=unix
 
 #  Related address links #
 

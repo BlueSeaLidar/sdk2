@@ -15,7 +15,7 @@
 #include <sys/msg.h>
 #endif
 
-#define SDKVERSION   "1.0"  //SDK版本号
+#define SDKVERSION   "1.2"  //SDK版本号
 /************************************************
 * @functionName:  read_config
 * @date:          2022-03-28

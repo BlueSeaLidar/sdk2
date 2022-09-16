@@ -1,5 +1,5 @@
-type:udp_uart
-port:com4
+type:uart
+port:com3
 baud_rate:768000
 lidar_ip:192.168.0.208
 lidar_port:6543
