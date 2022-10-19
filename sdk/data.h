@@ -20,7 +20,10 @@
 #include <string>
 #include<stdio.h>
 #include <stdlib.h>
-#include"third_party/mongoose/mongoose.h"
+extern "C"
+{
+	#include"third_party/mongoose/mongoose.h"
+}
 
 
 #ifdef _WIN32
@@ -32,7 +35,9 @@
 #define Print_TimeStamp_MSG WM_USER+104
 #define Get_OnePoint_MSG WM_USER+105
 #define Get_ZONE_MSG WM_USER+106
+#define Get_ZoneSection_MSG WM_USER+107
 #define Set_ZONE_MSG WM_USER+110
+#define Set_ZoneSection_MSG WM_USER+111
 #elif __linux
 #include <unistd.h>
 enum msg_queue
@@ -43,7 +48,8 @@ enum msg_queue
 	Print_Point_MSG,
 	Print_TimeStamp_MSG,
 	Get_ZONE_MSG,
-	Set_ZONE_MSG
+	Set_ZONE_MSG,
+	Set_ZoneSection_MSG
 };
 struct CMD
 {
@@ -421,19 +427,7 @@ bool parse_data_x(int len, unsigned char* buf,
 	int& span, int& is_mm, int& with_conf, 
 	RawData& dat, int& consume, int with_chk, LidarMsgHdr& zone);
 
-/************************************************
-* @functionName:  data_process
-* @date:          2022-03-25
-* @description:   CN:获取扫描点数组的具体信息	EN:Get the specific information of the scan point array
-* @Parameter:
-				  1.n[int,IN]				CN:点个数	EN: number of points
-				  2.points[DataPoint,IN]	CN:点信息	EN: points information
-				  3.timestamp[uint32_t,int]	CN:时间戳	EN:	timestamp
 
-* @return:        Null
-* @others:        Null
-*************************************************/
-void data_process2(const RawData& raw, const char* output_file, PointData& tmp);
 
 /************************************************
 * @functionName:  data_process
@@ -443,7 +437,10 @@ void data_process2(const RawData& raw, const char* output_file, PointData& tmp);
 					EN:Get the specific data of all sectors (write in a loop, if it is less than 180°, 
 						it will be added to the array, the loop will continue, and if it reaches 180°, all sector data will be parsed)
 * @Parameter:
-				  1.raw[RawData,IN]  CN:存储数据的结构体	EN:structure to store data
+				  1.raw[RawData,IN]  CN:存储临时数据的结构体			EN:structure to store temp data
+				  2.output_file[const char*,IN]  CN:输出的数据文件名称	EN:output data file name
+				  3.data[PointData,out]  CN:存储一圈点云数据的结构体	EN:structure that stores a circle of point cloud data
+				  4.from_zero[int,IN]  CN:包数据起始角度（0/180）		EN:Start angle of packet data（0/180）
 
 * @return:        Null
 * @others:        Null
@@ -476,7 +473,6 @@ void fan_data_process(const RawData& raw, const char* output_file, PointData&dat
 void whole_data_process(const RawData& raw, bool from_zero, const char* output_file, PointData& data);
 
 unsigned int stm32crc(unsigned int* ptr, unsigned int len);
-extern int pack_format;//CN:用来保存帧头的第二个字节，用来判断帧头数据类型	EN:Used to save the second byte of the frame header, used to determine the data type of the frame header
 
 #ifdef _WIN32
 void gettimeofday(timeval* tv, void*);

@@ -481,13 +481,13 @@ bool parse_data_x(int len, unsigned char* buf,
 	while (idx < len-18)
 	{
 		//防区报警
-		/*if (memcmp(buf, "LMSG", 4) == 0)
+		if (memcmp(buf, "LMSG", 4) == 0)
 		{
 			LidarMsgHdr* hdr = (LidarMsgHdr*)(buf + idx);
 			memcpy(&zone, hdr, sizeof(LidarMsgHdr));
 			consume = idx + sizeof(LidarMsgHdr);
 			return true;
-		}*/
+		}
 
 		if (buf[idx] == 'S' && buf[idx + 1] == 'T' && buf[idx + 6] == 'E' && buf[idx + 7] == 'D')
 		{

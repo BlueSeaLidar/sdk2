@@ -1,9 +1,5 @@
 ﻿#include"ZoneAlarm.h"
 
-
-
-
-
 ZoneAlarm::ZoneAlarm(int fd, bool isUDP, void* ptr)
 {
 	m_fd = fd;
@@ -366,15 +362,7 @@ bool ZoneAlarm::PackAll()
 		return false;
 	}
 	memcpy(m_zoneDef, m_recvBuf->buf, sizeof(ZoneDef));
-	FILE* fp = fopen("1.txt", "w");
-	if (fp)
-	{
-		for (int i = 0; i < sizeof(ZoneDef); i++)
-		{
-			fprintf(fp, "%02x \n", ((char*)m_zoneDef)[i]);
-		}
-		fclose(fp);
-	}
+
 	if (m_zoneDef->hdr.code != 0x454e5a50 // must be "PZON"
 		|| m_zoneDef->hdr.size != sizeof(ZoneDef)
 		|| m_zoneDef->hdr.proto_ver != 0x101)
@@ -483,15 +471,15 @@ int ZoneAlarm::setZone(zones& data,int sn)
 	uint32_t* buf1 = (uint32_t*)m_zoneDef;
 	m_zoneDef->hdr.crc = stm32crc(buf1 + 4, (sz - 16) / 4);
 
-	FILE* fp = fopen("2.txt", "w");
-	if (fp)
-	{
-		for (int i = 0; i < sizeof(ZoneDef); i++)
-		{
-			fprintf(fp, "%02x \n", ((char*)m_zoneDef)[i]);
-		}
-		fclose(fp);
-	}
+	//FILE* fp = fopen("2.txt", "w");
+	//if (fp)
+	//{
+	//	for (int i = 0; i < sizeof(ZoneDef); i++)
+	//	{
+	//		fprintf(fp, "%02x \n", ((char*)m_zoneDef)[i]);
+	//	}
+	//	fclose(fp);
+	//}
 	m_transBuf = new TransBuf;
 	memcpy(m_transBuf->buf, m_zoneDef, sz);
 	m_transBuf->total = sz;

@@ -1,7 +1,6 @@
 ﻿#ifndef __ZONEALARM_H_
 #define  __ZONEALARM_H_
-#include<stdlib.h>
-#include<iostream>
+//#include<iostream>
 #include"data.h"
 #include<math.h>
 #define MAX_ZONE_LINES 1000

@@ -131,7 +131,8 @@ void whole_data_process(const RawData &raw, bool from_zero, const char *output_f
 	RawData *data = new RawData;
 	memcpy(data, &raw, sizeof(RawData));
 	whole_datas.push_back(data);
-	//printf("N:%d angle:%d  first:%d  last:%d  span:%d  fbase:%d fend:%d\n", raw.N, raw.angle, raw.first, raw.last, raw.span, raw.fbase, raw.fend);
+	
+	
 	if ((from_zero && raw.angle == 0) || (!from_zero && raw.angle + raw.span == 1800))
 	{
 		//from_zero:true,A lap of data starts at 0 degrees
@@ -161,7 +162,7 @@ void whole_data_process(const RawData &raw, bool from_zero, const char *output_f
 		// record fan counts
 		n++;
 	}
-
+	//printf("3N:%d\n", whole_datas.size());
 	// not whole circle data, so clear it
 	if (angles != 3600)
 	{
@@ -186,17 +187,11 @@ void whole_data_process(const RawData &raw, bool from_zero, const char *output_f
 		delete data;
 	}
 	whole_datas.clear();
-	//INFO_PR("single span data points %d  time:%d.%d\n", count, timestamp[0], timestamp[1]);
 
-	//如果打开了打印开关，则返回雷达信息
-	
-	//PointData tmp;
 	tmp.N = count;
 	memcpy(tmp.ts, timestamp, sizeof(uint32_t) * 2);
 	memcpy(tmp.points, points, sizeof(DataPoint) * count);
-	//执行回调函数
-	//((void(*)(int, void *))msgptr)(1, &tmp);
-	// printf("\r%d.%d : Data frame head = %x, 360 degrees contains %d spans", timestamp[0], timestamp[1], pack_format, n);
+
 	if (output_file != NULL)
 	{
 		FILE *fp = fopen(output_file, "w");

@@ -1,7 +1,11 @@
 ﻿#pragma once
 #include<iostream>
 #include"data.h"
-#include"third_party/cJson/cJSON.h"
+extern "C"
+{
+	#include"third_party/cJson/cJSON.h"
+}
+
 class LidarWebService
 {
 public:

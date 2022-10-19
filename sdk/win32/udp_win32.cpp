@@ -60,7 +60,7 @@ int setup_lidar(int fd_udp, const char* ip, int port, int unit_is_mm, int with_c
 			printf("set LiDAR resample %d OK\n", resample);
 		}
 	}
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < 5; i++)
 	{
 		char cmd[32];
 		sprintf(cmd, "LSRPM:%dH", init_rpm);
@@ -287,7 +287,7 @@ bool udp_talk_S_PACK(int fd_udp, const char* ip, int port, int n, const char* cm
 	send_cmd_udp(fd_udp, ip, port, 0x0053, sn, n, cmd);
 
 	int nr = 0;
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < 1000; i++)
 	{
 		fd_set fds;
 		FD_ZERO(&fds);
@@ -313,7 +313,6 @@ bool udp_talk_S_PACK(int fd_udp, const char* ip, int port, int n, const char* cm
 				CmdHeader* hdr = (CmdHeader*)buf;
 				if (hdr->sign != 0x484c || hdr->sn != sn)
 					continue;
-
 				memcpy(result, buf + 8, 2);
 				return true;
 			}
@@ -603,7 +602,9 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 						{
 							if (zone.timestamp != 0)
 							{
+								((void(*)(int, void*))cfg->callback)(2, &zone);
 								memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
+								continue;
 							}
 							if (!cfg->output_360)
 							{
@@ -640,7 +641,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 				}
 			}
 		}
-		if (PeekMessage(&msg, NULL, GetDevInfo_MSG, Set_ZONE_MSG, PM_REMOVE)) //get msg from message queue
+		if (PeekMessage(&msg, NULL, GetDevInfo_MSG, Set_ZoneSection_MSG, PM_REMOVE)) //get msg from message queue
 		{
 			/*CMD *cmd = (CMD*)msg.wParam;
 			INFO_PR("threadson recv framehead:%x  str:%s addr:%x\n", cmd->framehead,cmd->str, cmd);*/
@@ -731,6 +732,31 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 				zones* cmd = (zones*)msg.wParam;
 				zonealarm->setZone(*cmd, zoneSN);
 				zoneFlag = 2;
+				delete[]cmd;
+				break;
+			}
+			case Set_ZoneSection_MSG:
+			{
+				int* cmd = (int*)msg.wParam;
+				char *tmpbuf=new char[3];
+				tmpbuf[2] ='\0';
+				char tmp[12] = { 0 };
+				sprintf(tmp, "LSAZN:%dH", *cmd);
+				if (!udp_talk_S_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 8, tmp, tmpbuf))
+				{
+					strcpy(tmpbuf, "NG");
+				}
+				//设置上传的数据类型为  数据加报警，否则切换防区通道没有实际意义
+				if (!udp_talk_S_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, sizeof(cmd), "LSPST:3H", tmpbuf))
+				{
+					
+					strcpy(tmpbuf, "NG");
+					
+				}
+				if (!PostThreadMessage(msg.lParam, msg.message, (WPARAM)tmpbuf, 0))
+				{
+					DEBUG_PR("threadson post message  Print_TimeStamp_MSG failed,errno:%d\n", ::GetLastError());
+				}
 				delete[]cmd;
 				break;
 			}

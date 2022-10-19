@@ -1,9 +1,7 @@
 ﻿#ifndef __STANDARD_INTERFACE_H__
 #define __STANDARD_INTERFACE_H__
 
-#include"service/LidarWebService.h"
 #include"ZoneAlarm.h"
-#include"data.h"
 #include"error.h"
 #ifdef _WIN32
 #include"win32\uart_win32.h"
@@ -147,18 +145,24 @@ int ControlDrv(long threadID, const char*data);
 * @others:        Null
 *************************************************/
 const char* getVersion();
+/************************************************
+* @functionName:  ZoneSection
+* @date:          2022-10-18
+* @description:   CN:读取/设置激活防区  EN:get/set alarmzone  section
+* @Parameter:	  1.threadID [long,IN]  CN:子线程ID/消息队列ID  EN:Child thread ID/message queue ID
+*				  2.section	[int,IN]   CN:激活的防区序号	EN:Active zone serial number
+* @return:        3.mode[int,IN]     CN: 0读取 1设置 激活的防区 EN:0 Read 1 Set the active zone
+* @others:        Null
+*************************************************/
+int ZoneSection(long threadID,int section,int mode);
+
 
 //打开本地服务(web测试可视化页面)
 void  OpenLocalService(RunConfig& cfg);
 //关闭本地服务
 void  CloseLocalService();
 
-
 int GetOnePoint_MSG(long threadID, PointData& data);
-
-void StringReplace(std::string& strBase, std::string strSrc, std::string strDes);
-//返回json字符串的标准格式
-char* jsonValue(const char* result, const char* message, cJSON* item);
 extern RunConfig* g_cfg;
 
 

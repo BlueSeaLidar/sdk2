@@ -379,7 +379,7 @@ int setup_lidar(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, 
 	// setup rpm  (The specific model range is different)
 	if (init_rpm > 300 && init_rpm < 3000)
 	{
-		for (int i = 0; i < 10; i++)
+		for (int i = 0; i < 5; i++)
 		{
 			char cmd[32];
 			sprintf(cmd, "LSRPM:%dH", init_rpm);
@@ -463,7 +463,7 @@ int setup_lidar2(HANDLE hCom, int unit_is_mm, int with_confidence, int resample,
 
 	if (init_rpm > 300 && init_rpm < 3000)
 	{
-		for (int i = 0; i < 10; i++)
+		for (int i = 0; i < 5; i++)
 		{
 			char cmd[32];
 			sprintf(cmd, "LSRPM:%dH", init_rpm);

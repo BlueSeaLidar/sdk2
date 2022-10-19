@@ -55,7 +55,7 @@ function getPointsData() {
     var jsondatas = eval("(" + data + ")");
     $.each(jsondatas.data, function (i, n) {
       pointsData[i] = [n.distance * 1000, n.angle];
-      console.log("dis:" + n.distance + "  angle:" + n.angle);
+      //console.log("dis:" + n.distance + "  angle:" + n.angle);
     })
     option.series[0].symbolSize = size;
     option.series[0].data = pointsData;
@@ -543,6 +543,7 @@ layui.use(['element', 'layer', 'form', 'table'], function () {
 /***************************************防区相关函数***********************************/
 function readZone() {
 
+    ClearZone();
   $.get("/getZone", function (data, status) {
     var jsondatas = eval("(" + data + ")");
     var N = jsondatas.data.N;
@@ -555,6 +556,9 @@ function readZone() {
       if (type == 4) { ZoneGraphics = 'sector'; }
 
       zoneSerial = jsondatas.data.values[i].zoneID;
+      //如果设置的防区和返回的data数据中的防区信息不一致，则不显示
+      if( $("#setZone").val()!=zoneSerial)
+          return;
       outputID = jsondatas.data.values[i].outputID;
       echartL = jsondatas.data.values[i].value[0];
       echartT = jsondatas.data.values[i].value[1];
@@ -575,7 +579,7 @@ function ShowZone() {
   var ZoneGraphics = $("#setZoneGraphics").val();
   //防区级别不同，颜色不同
   outputID = $("#setZoneAlarm").val();
-  zoneSerial = $("setZone").val();
+  zoneSerial = $("#setZone").val();
   echartL = $("#zoneL").val();
   echartT = $("#zoneT").val();
   echartR = $("#zoneR").val();

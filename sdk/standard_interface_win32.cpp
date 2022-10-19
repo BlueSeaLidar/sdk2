@@ -1,22 +1,13 @@
 #ifndef __STANDARD_INTERFACE_WIN32_H__
 #define __STANDARD_INTERFACE_WIN32_H__
 
-#include"service/LidarWebService.h"
-#include"data.h"
-#include"error.h"
-
-#include"win32\uart_win32.h"
-#include"win32\udp_win32.h"
-
 #include "standard_interface.h"
-#include <iostream>
+#include"service/LidarWebService.h"
 #include <fstream>
 #include <sstream>
-#include <stdio.h>
-#include <string.h>
-#include"third_party/mongoose/mongoose.h"
 RunConfig* g_cfg;
 LidarWebService* webservice;
+//Configuration file description: If you get linux in windows format, there will be an exception, please convert to unix first
 bool read_config(const char* cfg_file_name, RunConfig& cfg)
 {
 	std::ifstream infile;
@@ -168,6 +159,39 @@ void StopDrv(RunConfig* run)
 const char* getVersion()
 {
 	return SDKVERSION;
+}
+int ZoneSection(long threadID, int section, int mode)
+{
+	MSG msg;
+	int* cmd = new int;
+	*cmd = section;
+	if (!PostThreadMessage(threadID, Set_ZoneSection_MSG, (WPARAM)cmd, GetCurrentThreadId()))
+	{
+		delete cmd;
+		return MSG_POST_FAILED;
+	}
+	sleep(0.1);
+	int index = SLEEP_SIZE;
+	while (index--)
+	{
+		if (PeekMessage(&msg, NULL, Set_ZoneSection_MSG, Set_ZoneSection_MSG, PM_REMOVE))
+		{
+			switch (msg.message)
+			{
+			case Set_ZoneSection_MSG:
+				char* revdata = (char*)msg.wParam;	
+				INFO_PR("SetZoneSection recv MSG %s\n", revdata);
+				if (strcmp(revdata, "OK") == 0)
+				{
+					delete[] revdata;
+					return SUCCESS;
+				}	
+				return SET_ZONESECTION_FAILED;
+			}
+		}
+		sleep(1);
+	}
+	return SET_ZONESECTION_FAILED;
 }
 DWORD  WINAPI lidar_service(void* param)
 {

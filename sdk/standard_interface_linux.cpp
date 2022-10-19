@@ -3,12 +3,9 @@
 
 
 #include "standard_interface.h"
-#include <iostream>
+#include"service/LidarWebService.h"
 #include <fstream>
 #include <sstream>
-#include <stdio.h>
-#include <string.h>
-#include"third_party/mongoose/mongoose.h"
 RunConfig* g_cfg;
 LidarWebService* webservice;
 bool read_config(const char* cfg_file_name, RunConfig& cfg)
@@ -461,5 +458,37 @@ int SetAlarmZone(long threadID, zones& data)
 	}
 	return Set_ZONE_FAILED;
 }
+int ZoneSection(long threadID, int section, int mode)
+{
+	USER_MSG msg;
+	msg.type = 1;
+	msg.cmd.type2 = Set_ZoneSection_MSG;
+	memcpy(&msg.cmd.str, &section, sizeof(int));
+	int res = msgsnd(threadID, &msg, sizeof(msg.cmd), 0);
 
+	USER_MSG msg2;
+	sleep(0.5);
+	int index = 5;
+	while (index)
+	{
+		if (msgrcv(threadID, &msg2, sizeof(msg2.cmd), 2, IPC_NOWAIT) >= 0)
+		{
+			if (msg2.cmd.type2 == Set_ZoneSection_MSG)
+			{
+				char *rev= new char[2];
+				memcpy(rev, &msg2.cmd.str, sizeof(char)*2);
+				INFO_PR("%s recv MSG %s\n", __FUNCTION__,rev);
+				if(strcmp(rev,"OK")==0)
+					return SUCCESS;
+				else
+					return SET_ZONESECTION_FAILED;
+			}
+			else {
+				DEBUG_PR("%s msg error! %s\n", __FUNCTION__);
+			}
+		}
+		sleep(1);
+	}
+	return SET_ZONESECTION_FAILED;
+}
 #endif

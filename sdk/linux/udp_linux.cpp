@@ -614,7 +614,9 @@ void *lidar_thread_proc_udp(void *param)
 						if (cfg->output_scan)
 						{
 							if (zone.timestamp != 0)
+								((void(*)(int, void*))cfg->callback)(2, &zone);
 								memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
+								continue;
 
 							if (!cfg->output_360)
 							{
@@ -724,6 +726,32 @@ void *lidar_thread_proc_udp(void *param)
 				zonealarm->setZone(*cmd, zoneSN);
 				zoneFlag = 2;
 				delete[] cmd;
+				break;
+			}
+			case Set_ZoneSection_MSG:
+			{
+				int cmd;
+				memcpy(&cmd,msg.cmd.str,sizeof(int));
+				char tmp[12] = {0};
+				strcpy(tmp, msg.cmd.str);
+				char tmpbuf[2] = { 0 };
+				sprintf(tmp, "LSAZN:%dH", cmd);
+				if (!udp_talk_S_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 8, tmp, tmpbuf))
+				{
+					strcpy(tmpbuf, "NG");
+				}
+				//设置上传的数据类型为  数据加报警，否则切换防区通道没有实际意义
+				if (!udp_talk_S_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, sizeof(cmd), "LSPST:3H", tmpbuf))
+				{
+					
+					strcpy(tmpbuf, "NG");
+					
+				}
+				USER_MSG msg2;
+				msg2.type = 2;
+				msg2.cmd.type2 = msg.cmd.type2;
+				msgsnd(cfg->thread_ID[1], &msg2, sizeof(msg2.cmd), 0);
+				memcpy(msg2.cmd.str, &tmpbuf, sizeof(tmpbuf));
 				break;
 			}
 			}

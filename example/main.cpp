@@ -14,6 +14,7 @@
 #include <string.h>
 #include "../sdk/standard_interface.h"
 
+
 //传入回调指针的方式打印
 void CallBackMsg(int msgtype, void* param)
 {
@@ -25,6 +26,69 @@ void CallBackMsg(int msgtype, void* param)
 		{
 			//INFO_PR("%.5f\t%.3f\t%d\n", pointdata->points[i].angle, pointdata->points[i].distance, pointdata->points[i].confidence);
 		}
+	}
+	//实时防区数据返回
+	else if (msgtype == 2)
+	{
+		LidarMsgHdr* zone = (LidarMsgHdr*)param;
+		uint32_t event = zone->events;
+		std::string text;
+		if (zone->flags % 2 == 1) {
+			//错误信息
+			if (getbit(event, 0) == 1) {
+				text += "供电不足";
+			}
+			if (getbit(event, 1) == 1) {
+				text += "电机堵转足";
+			}
+			if (getbit(event, 2) == 1) {
+				text += "测距模块温度过高";
+			}
+			if (getbit(event, 3) == 1) {
+				text += "网络错误";
+			}
+			if (getbit(event, 4) == 1) {
+				text += "测距模块无输出";
+			}
+		}
+		if (zone->flags >= 0x100) {
+			//防区信息
+			if (getbit(event, 12) == 1) {
+				text += "观察！！！";
+			}
+			if (getbit(event, 13) == 1) {
+				text += "警戒！！！";
+			}
+			if (getbit(event, 14) == 1) {
+				text += "报警！！！";
+			}
+			if (getbit(event, 15) == 1) {
+				text += "遮挡！";
+			}
+			if (getbit(event, 16) == 1) {
+				text += "无数据";
+			}
+			if (getbit(event, 17) == 1) {
+				text += "无防区设置";
+			}
+			if (getbit(event, 18) == 1) {
+				text += "系统内部错误";
+			}
+			if (getbit(event, 19) == 1) {
+				text += "系统运行异常";
+			}
+			if (getbit(event, 20) == 1) {
+				//和上面的第四项重复，这里屏蔽
+				//text+='网络错误\n'
+			}
+			if (getbit(event, 21) == 1) {
+				text += "设备更新中";
+			}
+			if (getbit(event, 22) == 1) {
+				text += "零位输出";
+			}
+		}
+		INFO_PR("Active zone:%d\tMSG:%s\n", zone->zone_actived, text.c_str());
 	}
 	//获取雷达时间戳打印信息
 	else if (msgtype == 4)
@@ -116,7 +180,6 @@ int main(int argc, char **argv)
 	memset(&cfg, 0, sizeof(RunConfig));
 	//传入打印函数指针
 	cfg.callback = CallBackMsg;
-	//传入配置文件的方式
 	if (argc == 2)
 	{
 		const char *cfg_file_name = argv[1];
@@ -126,32 +189,6 @@ int main(int argc, char **argv)
 			return ARG_ERROR_FILE_EXIST;
 		}
 	}
-	//手动传入参的方式
-	else if (argc > 2)
-	{
-		strcpy(cfg.type, argv[1]);
-		strcpy(cfg.port, argv[2]);
-		cfg.baud_rate = atoi(argv[3]);
-		strcpy(cfg.lidar_ip, argv[4]);
-		cfg.lidar_port = atoi(argv[5]);
-		cfg.local_port = atoi(argv[6]);
-		cfg.data_bytes = atoi(argv[7]);
-		cfg.unit_is_mm = atoi(argv[8]);
-		cfg.with_confidence = atoi(argv[9]);
-		cfg.with_chk = atoi(argv[10]);
-		cfg.with_smooth = atoi(argv[11]);
-		cfg.with_deshadow = atoi(argv[12]);
-		cfg.resample = atoi(argv[13]);
-		cfg.rpm = atoi(argv[14]);
-		cfg.output_scan = atoi(argv[15]);
-		cfg.output_360 = atoi(argv[16]);
-		cfg.from_zero = atoi(argv[17]);
-		strcpy(cfg.output_file, argv[18]);
-		cfg.is_group_listener = atoi(argv[19]);
-		strcpy(cfg.group_ip, argv[20]);
-		cfg.service_port = atoi(argv[21]);
-		cfg.is_open_service = atoi(argv[22]);
-	}
 	//启动雷达设备 返回值非0表示失败  0表示可以正常接收包数据
 	int res = openDev(cfg);
 
@@ -159,14 +196,19 @@ int main(int argc, char **argv)
 	{
 		return res;
 	}
+	//启动web本地服务，SDK单独集成则不需要
 	if (cfg.is_open_service)
 		OpenLocalService(cfg);
-
-	
 	printf("Please control it through a browser and enter the default address: http://localhost:8888\n");
+	//切换防区   0 success    !=0 false   
+	if (ZoneSection(cfg.thread_ID[1], 1, 1))
+	{
+		printf("Failed to switch the specified zone!\n");
+	}
+	getLidarData(cfg.thread_ID[1], true);
 	while (1)
 	{
-
+		
 	}
 	//以下为调用接口样例
 	//while (1)

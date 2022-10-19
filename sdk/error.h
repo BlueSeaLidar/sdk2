@@ -42,7 +42,7 @@
 #define SET_DEV_FAILED  -52//设置设备启停重启测试失败
 #define SET_EVENT_FAILED  -53//设置事件同步失败
 #define Set_ZONE_FAILED  -54 //设置防区失败
-
+#define SET_ZONESECTION_FAILED -55 //设置激活的防区失败
 //net
 #define URL_ADDRESS_FAILED  -60//url地址不存在
 
