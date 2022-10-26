@@ -32,6 +32,6 @@ bool udp_talk_GS_PACK(int fd_udp,const char* ip, int port, int n, const char* cm
 bool udp_talk_S_PACK(int fd_udp, const char* ip, int port,int n, const char* cmd,void *result);
 bool udp_talk_C_PACK(int fd_udp, const char* lidar_ip, int lidar_port,int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch);
 
-int setup_lidar(int fd_udp, const char* ip, int port,int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth,int init_rpm,char* version);
+bool setup_lidar(int fd_udp, const char* ip, int port,int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth,int init_rpm,int should_post,char* version);
 int setup_lidar_extre(int fd_udp, const char *ip, int port,  DevData &data);
 #endif

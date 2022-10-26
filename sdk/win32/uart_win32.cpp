@@ -343,22 +343,22 @@ int setup_lidar(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, 
 		printf("set LiDAR LXVERH  OK\n");
 	}
 	//Set the lidar returned data unit   CM or MM
-	if (uart_talk(hCom, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",	2, "OK", 0, NULL))
+	if (uart_talk(hCom, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH", 6, "LiDAR ", 5, buf))
 	{
 		printf("set LiDAR unit OK\n");
 	}
 	//set lidar confidence state   LNCONH close   LOCONH open
-	if (uart_talk(hCom, 6, with_confidence == 0 ? "LNCONH" : "LOCONH",	2, "OK", 0, NULL))
+	if (uart_talk(hCom, 6, with_confidence == 0 ? "LNCONH" : "LOCONH", 6, "LiDAR ", 5, buf))
 	{
 		printf("set LiDAR confidence OK\n");
 	}
 	//set  de-deshadow state    LFFF0H:close  LFFF1H:open
-	if (uart_talk(hCom, 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H",	2, "OK", 0, NULL))
+	if (uart_talk(hCom, 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H", 6, "LiDAR ", 0, NULL))
 	{
 		printf("set deshadow OK\n");
 	}
 	//set  de-smooth     LSSS0H:close   LSSS1H:open
-	if (uart_talk(hCom, 6, with_smooth == 0 ? "LSSS0H" : "LSSS1H",	2, "OK", 0, NULL))
+	if (uart_talk(hCom, 6, with_smooth == 0 ? "LSSS0H" : "LSSS1H", 6, "LiDAR ", 0, NULL))
 	{
 		printf("set smooth to OK\n");
 	}

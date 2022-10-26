@@ -245,73 +245,121 @@ bool udp_talk_S_PACK(int fd_udp, const char *ip, int port, int n, const char *cm
 	INFO_PR("read %d packets, not response\n", nr);
 	return false;
 }
-int setup_lidar(int fd_udp, const char *ip, int port,
-				int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char *version)
+bool setup_lidar(int fd_udp, const char *ip, int port,
+				 int unit_is_mm, int with_confidence, int resample, int with_deshadow,
+				 int with_smooth, int init_rpm, int should_post, char *version)
 {
 	char buf[32];
 	int nr = 0;
 	//初始化默认开始旋转
-	// if(udp_talk_C_PACK(fd_udp, ip, port, 6, "LSTARH", 2, "OK", 0, NULL))
-	// {
-	// 	printf("set LiDAR LSTARH  OK \n");
-	// }
+	if (udp_talk_C_PACK(fd_udp, ip, port, 6, "LSTARH", 2, "OK", 0, NULL))
+	{
+		printf("set LiDAR LSTARH  OK \n");
+	}
 	//硬件版本号
 	if (udp_talk_C_PACK(fd_udp, ip, port, 6, "LXVERH", 14, "MOTOR VERSION:", 15, buf))
 	{
 		memcpy(version, buf, 12);
 		printf("set LiDAR LXVERH  OK %s\n", version);
 	}
-	if (udp_talk_C_PACK(fd_udp, ip, port, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH", 2, "OK", 0, NULL))
+	//查询当前雷达配置信息，如果不同则修改
+	EEpromV101 *eepromv101 = new EEpromV101;
+	memset(eepromv101, 0, sizeof(EEpromV101));
+	char result[3] = {0};
+	if (!udp_talk_GS_PACK(fd_udp, ip, port, 6, "LUUIDH", eepromv101))
+	{
+		DEBUG_PR("GetDevInfo_MSG failed\n");
+		return false;
+	}
+	if (eepromv101->with_filter != with_deshadow)
+	{
+		char cmd[12] = {0};
+		sprintf(cmd, "LSDSW:%dH", with_deshadow);
+		if (udp_talk_S_PACK(fd_udp, ip, port, sizeof(cmd), cmd, result))
+		{
+			printf("set LiDAR deshadow %s\n", result);
+		}
+		else
+		{
+			printf("set LiDAR deshadow NG\n");
+		}
+	}
+	if (eepromv101->with_smooth != with_smooth)
+	{
+		char cmd[12] = {0};
+		sprintf(cmd, "LSSMT:%dH", with_smooth);
+		if (udp_talk_S_PACK(fd_udp, ip, port, 6, cmd, result))
+		{
+			printf("set LiDAR with_smooth %s\n", result);
+		}
+		else
+		{
+			printf("set LiDAR with_smooth NG\n");
+		}
+	}
+	if (eepromv101->with_resample != resample)
+	{
+		// resample == 0  非固定角分辨率不适用于网络包计算
+		if (resample == 1 || (resample > 100 && resample <= 1500))
+			sprintf(buf, "LSRES:%04dH", resample);
+		else
+			buf[0] = 0;
+
+		if (buf[0])
+		{
+			if (udp_talk_C_PACK(fd_udp, ip, port, 10, buf, 2, "OK", 0, NULL))
+			{
+				printf("set LiDAR resample %d OK\n", resample);
+			}
+			else
+			{
+				printf("set LiDAR resample %d NG\n", resample);
+			}
+		}
+	}
+	if (eepromv101->RPM != init_rpm)
+	{
+		for (int i = 0; i < 5; i++)
+		{
+			char cmd[16];
+			sprintf(cmd, "LSRPM:%dH", init_rpm);
+			if (udp_talk_S_PACK(fd_udp, ip, port, strlen(cmd), cmd, result))
+			{
+				printf("set RPM to %d  %s\n", init_rpm, result);
+				break;
+			}
+			else
+			{
+				printf("set RPM to %d  NG   index=%d\n", init_rpm, i + 1);
+			}
+		}
+	}
+	if (eepromv101->should_post != (should_post == 1 ? 3 : 1))
+	{
+		char cmd[12] = {0};
+		sprintf(cmd, "LSPST:%dH", should_post == 1 ? 3 : 1);
+		if (udp_talk_S_PACK(fd_udp, ip, port, sizeof(cmd), cmd, result))
+		{
+			printf("set LiDAR %s %s\n", cmd, result);
+		}
+		else
+		{
+			printf("set LiDAR should_post NG\n");
+		}
+	}
+	delete eepromv101;
+	//网络款都是毫米级,带强度
+	/*if (udp_talk_C_PACK(fd_udp, ip, port, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",2, "OK", 0, NULL))
 	{
 		printf("set LiDAR unit_is_mm  OK\n");
 	}
 
-	if (udp_talk_C_PACK(fd_udp, ip, port, 6, with_confidence == 0 ? "LNCONH" : "LOCONH", 2, "OK", 0, NULL))
+	if (udp_talk_C_PACK(fd_udp, ip, port, 6, with_confidence == 0 ? "LNCONH" : "LOCONH",2, "OK ", 0, NULL))
 	{
 		printf("set LiDAR with_confidence OK\n");
-	}
-	if (udp_talk_C_PACK(fd_udp, ip, port,
-						6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H",
-						2, "OK", 0, NULL))
-	{
-		printf("set deshadow to %d OK!\n", with_deshadow);
-	}
+	}*/
 
-	if (udp_talk_C_PACK(fd_udp, ip, port, 6,
-						with_smooth == 0 ? "LSSS0H" : "LSSS1H",
-						2, "OK", 0, NULL))
-	{
-		printf("set smooth to %d OK!\n", with_smooth);
-	}
-
-	if (resample == 0)
-		strcpy(buf, "LSRES:000H");
-	else if (resample == 1)
-		strcpy(buf, "LSRES:001H");
-	else if (resample > 100 && resample < 1000)
-		sprintf(buf, "LSRES:%03dH", resample);
-	else
-		buf[0] = 0;
-
-	if (buf[0])
-	{
-		if (udp_talk_C_PACK(fd_udp, ip, port, 10, buf, 2, "OK", 0, NULL))
-		{
-			printf("set LiDAR resample to %d OK!\n", resample);
-		}
-	}
-
-	for (int i = 0; i < 10; i++)
-	{
-		char cmd[32];
-		sprintf(cmd, "LSRPM:%04dH", init_rpm);
-		if (udp_talk_C_PACK(fd_udp, ip, port, strlen(cmd), cmd, 2, "OK", 0, NULL))
-		{
-			printf("set RPM to %d  OK\n", init_rpm);
-			break;
-		}
-	}
-	return 0;
+	return true;
 }
 int setup_lidar_extre(int fd_udp, const char *ip, int port, DevData &data)
 {
@@ -475,7 +523,7 @@ void *lidar_thread_proc_udp(void *param)
 	{
 		setup_lidar(cfg->fd, cfg->lidar_ip, cfg->lidar_port,
 					cfg->unit_is_mm, cfg->with_confidence,
-					cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
+					cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->alarm_msg, cfg->version);
 	}
 
 	unsigned char *buf = new unsigned char[BUF_SIZE];
@@ -595,8 +643,9 @@ void *lidar_thread_proc_udp(void *param)
 					memset(&zone, 0, sizeof(LidarMsgHdr));
 					bool is_pack;
 					int consume;
-					if (cfg->data_bytes==3)
+					if (cfg->data_bytes == 3)
 					{
+						// printf("%.02x %.02x %.02x %.02x\n ",buf[0],buf[1],buf[2],buf[3]);
 						is_pack = parse_data_x(len, buf,
 											   fan_span, cfg->unit_is_mm, cfg->with_confidence,
 											   dat, consume, cfg->with_chk, zone);
@@ -614,10 +663,11 @@ void *lidar_thread_proc_udp(void *param)
 						if (cfg->output_scan)
 						{
 							if (zone.timestamp != 0)
-								((void(*)(int, void*))cfg->callback)(2, &zone);
+							{
+								((void (*)(int, void *))cfg->callback)(2, &zone);
 								memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
 								continue;
-
+							}
 							if (!cfg->output_360)
 							{
 								// 每个扇区发送
@@ -631,6 +681,7 @@ void *lidar_thread_proc_udp(void *param)
 							}
 							if (tmp.N > 0)
 							{
+
 								((void (*)(int, void *))cfg->callback)(1, &tmp);
 								memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
 							}
@@ -647,14 +698,16 @@ void *lidar_thread_proc_udp(void *param)
 			case GetDevInfo_MSG:
 			{
 				EEpromV101 eepromV101;
+				memset(&eepromV101,0,sizeof(EEpromV101));
+				USER_MSG msg2;
+				msg2.type = 2;
+				msg2.cmd.type2 = msg.cmd.type2;
 				if (udp_talk_GS_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 6, "LUUIDH", &eepromV101))
 				{
-					USER_MSG msg2;
-					msg2.type = 2;
-					msg2.cmd.type2 = msg.cmd.type2;
 					memcpy(msg2.cmd.str, &eepromV101, sizeof(EEpromV101));
-					msgsnd(cfg->thread_ID[1], &msg2, sizeof(msg2.cmd), 0);
 				}
+				msgsnd(cfg->thread_ID[1], &msg2, sizeof(msg2.cmd), 0);
+				printf("%d %s\n", __LINE__,__FUNCTION__);
 				break;
 			}
 			case SetDevInfo_MSG:
@@ -668,6 +721,7 @@ void *lidar_thread_proc_udp(void *param)
 				msg2.cmd.type2 = msg.cmd.type2;
 				memcpy(msg2.cmd.str, &devdata, sizeof(DevData));
 				msgsnd(cfg->thread_ID[1], &msg2, sizeof(msg2.cmd), 0);
+				printf("%d %s\n", __LINE__,__FUNCTION__);
 				break;
 			}
 			case ctrl_MSG:
@@ -731,27 +785,27 @@ void *lidar_thread_proc_udp(void *param)
 			case Set_ZoneSection_MSG:
 			{
 				int cmd;
-				memcpy(&cmd,msg.cmd.str,sizeof(int));
+				memcpy(&cmd, msg.cmd.str, sizeof(int));
 				char tmp[12] = {0};
 				strcpy(tmp, msg.cmd.str);
-				char tmpbuf[2] = { 0 };
+				char tmpbuf[3] = {0};
+				tmpbuf[2] = '\0';
 				sprintf(tmp, "LSAZN:%dH", cmd);
 				if (!udp_talk_S_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 8, tmp, tmpbuf))
 				{
 					strcpy(tmpbuf, "NG");
 				}
 				//设置上传的数据类型为  数据加报警，否则切换防区通道没有实际意义
-				if (!udp_talk_S_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, sizeof(cmd), "LSPST:3H", tmpbuf))
+				if (!udp_talk_S_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, sizeof(tmp), "LSPST:3H", tmpbuf))
 				{
-					
+
 					strcpy(tmpbuf, "NG");
-					
 				}
 				USER_MSG msg2;
 				msg2.type = 2;
 				msg2.cmd.type2 = msg.cmd.type2;
-				msgsnd(cfg->thread_ID[1], &msg2, sizeof(msg2.cmd), 0);
 				memcpy(msg2.cmd.str, &tmpbuf, sizeof(tmpbuf));
+				msgsnd(cfg->thread_ID[1], &msg2, sizeof(msg2.cmd), 0);
 				break;
 			}
 			}

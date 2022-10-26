@@ -134,6 +134,8 @@ void PrintMsg(int msgtype, void *param)
 		INFO_PR("dev info: 转速:%d 电机启动参数:%d FIR滤波阶数:%d 圈数:%d  分辨率:%d   开机自动上传:%d 固定上传:%d  数据点平滑:%d 去拖点:%d   网络心跳:%d  记录IO口极性:%d\n",
 				eepromv101->RPM, eepromv101->RPM_pulse, eepromv101->fir_filter, eepromv101->cir, eepromv101->with_resample, eepromv101->auto_start,
 				eepromv101->target_fixed, eepromv101->with_smooth, eepromv101->with_filter, eepromv101->net_watchdog, eepromv101->pnp_flags);
+
+		INFO_PR("dev info:平滑系数：%d  激活防区：%d  上传数据类型：%d", eepromv101->deshadow, eepromv101->zone_acted,eepromv101->should_post);
 	}
 	//设置硬件配置数据，如果成功，则打印OK    S_PACK
 	else if (msgtype == 3)
@@ -149,6 +151,7 @@ void PrintMsg(int msgtype, void *param)
 			}
 		}
 	}
+	fflush(stdout);
 }
 
 //ip以及雷达地址拼接
@@ -200,12 +203,17 @@ int main(int argc, char **argv)
 	if (cfg.is_open_service)
 		OpenLocalService(cfg);
 	printf("Please control it through a browser and enter the default address: http://localhost:8888\n");
-	//切换防区   0 success    !=0 false   
-	if (ZoneSection(cfg.thread_ID[1], 1, 1))
-	{
-		printf("Failed to switch the specified zone!\n");
-	}
+	//切换防区(仅防区款)   0 success    !=0 false   
+	//if (ZoneSection(cfg.thread_ID[1], 1, 1))
+	//{
+	//	printf("Failed to switch the specified zone!\n");
+	//}
 	getLidarData(cfg.thread_ID[1], true);
+	EEpromV101 data;
+	if (GetDevInfo(cfg.thread_ID[1], data) == 0)
+	{
+		 PrintMsg(2, &data);
+	}
 	while (1)
 	{
 		

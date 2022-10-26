@@ -10,22 +10,109 @@
 
 send_cmd_udp_ptr CallBack_Udp;
 
-int setup_lidar(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm,char* version)
+bool setup_lidar(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, int should_post,char* version)
 {
 	char buf[32];
 	int nr = 0;
 	//初始化默认开始旋转
-	/*if (udp_talk_C_PACK(fd_udp, ip, port, 6, "LSTARH", 2, "OK", 0, NULL))
+	if (udp_talk_C_PACK(fd_udp, ip, port, 6, "LSTARH", 2, "OK", 0, NULL))
 	{
 		printf("set LiDAR LSTARH  OK \n");
-	}*/
+	}
 	//硬件版本号
 	if (udp_talk_C_PACK(fd_udp, ip, port, 6, "LXVERH", 14, "MOTOR VERSION:", 15, buf))
 	{
 		memcpy(version, buf, 12);
 		printf("set LiDAR LXVERH  OK %s\n", version);
 	}
-	if (udp_talk_C_PACK(fd_udp, ip, port, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",2, "OK", 0, NULL))
+	//查询当前雷达配置信息，如果不同则修改
+	EEpromV101* eepromv101 = new EEpromV101;
+	memset(eepromv101, 0, sizeof(EEpromV101));
+	char result[3] = { 0 };
+	if (!udp_talk_GS_PACK(fd_udp, ip, port, 6, "LUUIDH", eepromv101))
+	{
+		DEBUG_PR("GetDevInfo_MSG failed\n");
+		return false;
+	}
+	if (eepromv101->with_filter != with_deshadow)
+	{
+		char cmd[12] = { 0 };
+		sprintf(cmd, "LSDSW:%dH", with_deshadow);
+		if (udp_talk_S_PACK(fd_udp, ip, port, sizeof(cmd), cmd, result))
+		{
+			printf("set LiDAR deshadow %s\n", result);
+		}
+		else
+		{
+			printf("set LiDAR deshadow NG\n");
+		}
+	}
+	if (eepromv101->with_smooth != with_smooth)
+	{
+		char cmd[12] = { 0 };
+		sprintf(cmd, "LSSMT:%dH", with_smooth);
+		if (udp_talk_S_PACK(fd_udp, ip, port, 6, cmd, result))
+		{
+			printf("set LiDAR with_smooth %s\n", result);
+		}
+		else
+		{
+			printf("set LiDAR with_smooth NG\n");
+		}
+	}
+	if (eepromv101->with_resample != resample)
+	{
+		//resample == 0  非固定角分辨率不适用于网络包计算 
+		if ( resample == 1|| (resample > 100 && resample <= 1500))
+			sprintf_s(buf, 30, "LSRES:%04dH", resample);
+		else
+			buf[0] = 0;
+
+		if (buf[0]) {
+			if (udp_talk_C_PACK(fd_udp, ip, port, 10, buf, 2, "OK", 0, NULL))
+			{
+				printf("set LiDAR resample %d OK\n", resample);
+			}
+			else
+			{
+				printf("set LiDAR resample %d NG\n", resample);
+			}
+		}
+		
+	}
+	if (eepromv101->RPM != init_rpm)
+	{
+		for (int i = 0; i < 5; i++)
+		{
+			char cmd[16];
+			sprintf(cmd, "LSRPM:%dH", init_rpm);
+			if (udp_talk_S_PACK(fd_udp, ip, port, strlen(cmd), cmd, result))
+			{
+				printf("set RPM to %d  %s\n", init_rpm,result);
+				break;
+			}
+			else
+			{
+				printf("set RPM to %d  NG   index=%d\n", init_rpm,i+1);
+			}
+		}
+	}
+	if (eepromv101->should_post != (should_post==1?3:1))
+	{
+		char cmd[12] = { 0 };
+		sprintf(cmd, "LSPST:%dH", should_post == 1 ? 3 : 1);
+		if (udp_talk_S_PACK(fd_udp, ip, port, sizeof(cmd), cmd, result))
+		{
+			printf("set LiDAR %s %s\n", cmd,result);
+		}
+		else
+		{
+			printf("set LiDAR should_post NG\n");
+		}
+	}
+	delete eepromv101;
+	//网络款都是毫米级,带强度
+	/*if (udp_talk_C_PACK(fd_udp, ip, port, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",2, "OK", 0, NULL))
 	{
 		printf("set LiDAR unit_is_mm  OK\n");
 	}
@@ -33,44 +120,9 @@ int setup_lidar(int fd_udp, const char* ip, int port, int unit_is_mm, int with_c
 	if (udp_talk_C_PACK(fd_udp, ip, port, 6, with_confidence == 0 ? "LNCONH" : "LOCONH",2, "OK ", 0, NULL))
 	{
 		printf("set LiDAR with_confidence OK\n");
-	}
+	}*/
 
-	if (udp_talk_C_PACK(fd_udp, ip, port, 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H",2, "OK", 0, NULL))
-	{
-		printf("set LiDAR deshadow OK\n");
-	}
-
-	if (udp_talk_C_PACK(fd_udp, ip, port, 6, with_smooth == 0 ? "LSSS0H" : "LSSS1H",2, "OK", 0, NULL))
-	{
-		printf("set LiDAR with_smooth OK\n");
-	}
-
-	if (resample == 0)
-		strcpy_s(buf, 30, "LSRES:000H");
-	else if (resample == 1)
-		strcpy_s(buf, 30, "LSRES:001H");
-	else if (resample > 100 && resample <= 1500)
-		sprintf_s(buf, 30, "LSRES:%04dH", resample);
-	else
-		buf[0] = 0;
-
-	if (buf[0]) {
-		if (udp_talk_C_PACK(fd_udp, ip, port, 10, buf, 2, "OK",0, NULL))
-		{
-			printf("set LiDAR resample %d OK\n", resample);
-		}
-	}
-	for (int i = 0; i < 5; i++)
-	{
-		char cmd[32];
-		sprintf(cmd, "LSRPM:%dH", init_rpm);
-		if (udp_talk_C_PACK(fd_udp, ip, port, strlen(cmd), cmd, 2, "OK", 0, NULL))
-		{
-			printf("set RPM to %d  OK\n", init_rpm);
-			break;
-		}
-	}
-	return 0;
+	return true;
 }
 
 
@@ -450,8 +502,6 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 	CallBack_Udp = send_cmd_udp;
 	ZoneAlarm* zonealarm = new ZoneAlarm(cfg->fd,true, cfg->lidar_ip,cfg->lidar_port, CallBack_Udp);
 	PointData tmp;
-	//memset(&tmp, 0, sizeof(PointData));
-
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	time_t tto = tv.tv_sec + 1;
@@ -477,7 +527,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 	}
 	else
 	{
-		setup_lidar(cfg->fd, cfg->lidar_ip, cfg->lidar_port, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
+		setup_lidar(cfg->fd, cfg->lidar_ip, cfg->lidar_port, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->alarm_msg,cfg->version);
 	}
 	
 	unsigned char* buf = new unsigned char[BUF_SIZE];
@@ -582,6 +632,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 					int consume;
 					if (cfg->data_bytes==3)
 					{
+						//printf("%.02x %.02x %.02x %.02x\n ", buf[0], buf[1], buf[2], buf[3]);
 						is_pack = parse_data_x(len, buf,
 							fan_span, cfg->unit_is_mm, cfg->with_confidence,
 							dat, consume, cfg->with_chk, zone);
@@ -746,13 +797,15 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 				{
 					strcpy(tmpbuf, "NG");
 				}
+				
 				//设置上传的数据类型为  数据加报警，否则切换防区通道没有实际意义
-				if (!udp_talk_S_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, sizeof(cmd), "LSPST:3H", tmpbuf))
+				if (!udp_talk_S_PACK(cfg->fd, cfg->lidar_ip, cfg->lidar_port, sizeof(tmp), "LSPST:3H", tmpbuf))
 				{
 					
 					strcpy(tmpbuf, "NG");
 					
 				}
+				
 				if (!PostThreadMessage(msg.lParam, msg.message, (WPARAM)tmpbuf, 0))
 				{
 					DEBUG_PR("threadson post message  Print_TimeStamp_MSG failed,errno:%d\n", ::GetLastError());

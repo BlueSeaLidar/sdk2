@@ -361,7 +361,7 @@ bool uart_talk(int fd, int n, const char *cmd,
 			   int nhdr, const char *hdr_str,
 			   int nfetch, char *fetch)
 {
-	// printf("send command : %s\n", cmd);
+	printf("send command : %s\n", cmd);
 	write(fd, cmd, n);
 
 	char buf[2048];
@@ -376,8 +376,11 @@ bool uart_talk(int fd, int n, const char *cmd,
 	{
 		if (memcmp(buf + i, hdr_str, nhdr) == 0)
 		{
-			memcpy(fetch, buf + i + nhdr, nfetch);
-			fetch[nfetch] = 0;
+			if (nfetch > 0)
+			{
+				memcpy(fetch, buf + i + nhdr, nfetch);
+				fetch[nfetch] = 0;
+			}
 			return true;
 		}
 	}
@@ -575,27 +578,27 @@ int setup_lidar(int fd_uart, int unit_is_mm, int with_confidence, int resample, 
 	}
 
 	if (uart_talk(fd_uart, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",
-				  10, "SET LiDAR ", 9, buf))
+				  10, "SET LiDAR ", 0, NULL))
 	{
-		printf("set LiDAR unit to %s\n", buf);
+		printf("set LiDAR unit OK\n");
 	}
 
 	if (uart_talk(fd_uart, 6, with_confidence == 0 ? "LNCONH" : "LOCONH",
-				  6, "LiDAR ", 5, buf))
+				  6, "LiDAR ", 0, NULL))
 	{
-		printf("set LiDAR confidence to %s\n", buf);
+		printf("set LiDAR confidence OK\n");
 	}
 
 	if (uart_talk(fd_uart, 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H",
-				  6, "LiDAR ", 5, buf))
+				  6, "LiDAR ", 0, NULL))
 	{
-		printf("set deshadow to %d\n", with_deshadow);
+		printf("set deshadow OK\n");
 	}
 
 	if (uart_talk(fd_uart, 6, with_smooth == 0 ? "LSSS0H" : "LSSS1H",
-				  6, "LiDAR ", 5, buf))
+				  6, "LiDAR ", 0, NULL))
 	{
-		printf("set smooth to %d\n", with_smooth);
+		printf("set smooth  OK\n");
 	}
 
 	if (resample == 0)
@@ -691,7 +694,6 @@ void *lidar_thread_proc_uart(void *param)
 				fwrite(buf + buf_len, 1, nr, fp_rec);
 				fflush(fp_rec);
 			}
-			// printf("%s %d %d\n",__FUNCTION__,__LINE__,nr);
 			buf_len += nr;
 		}
 
@@ -701,7 +703,7 @@ void *lidar_thread_proc_uart(void *param)
 			int res = -1;
 			if (zoneFlag == 1)
 			{
-				
+
 				res = zonealarm->getZoneRev(buf, buf_len, zoneSN, consume);
 				if (res != 0)
 				{
@@ -746,6 +748,7 @@ void *lidar_thread_proc_uart(void *param)
 					is_pack = parse_data_x(buf_len, buf,
 										   fan_span, cfg->unit_is_mm, cfg->with_confidence,
 										   dat, consume, cfg->with_chk, zone);
+					//printf("%d %s %d\n", __LINE__, __FUNCTION__, is_pack);
 				}
 				else
 				{
@@ -760,17 +763,12 @@ void *lidar_thread_proc_uart(void *param)
 					{
 						//！！！User needs to extract data operation, you can refer to this function，For details about other printing operations, please refer to the user.cpp file
 						if (zone.timestamp != 0)
+						{
 							memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
-
-						if (!cfg->output_360)
-						{
-							memset(&tmp, 0, sizeof(PointData));
-							fan_data_process(dat, cfg->output_file, tmp);
 						}
-						else
-						{
-							whole_data_process(dat, cfg->from_zero, cfg->output_file, tmp);
-						}
+						memset(&tmp, 0, sizeof(PointData));
+						data_process(dat, cfg->output_file, tmp, cfg->from_zero);
+						//执行回调函数
 						if (tmp.N > 0)
 						{
 							((void (*)(int, void *))cfg->callback)(1, &tmp);
@@ -779,22 +777,21 @@ void *lidar_thread_proc_uart(void *param)
 					}
 				}
 			}
-				if (consume > 0)
+			if (consume > 0)
+			{
+				// data is not whole fan,drop it
+				if (!is_pack)
 				{
-					// data is not whole fan,drop it
-					if (!is_pack)
-					{
-						DEBUG_PR("drop %d bytes: %02x %02x %02x %02x %02x %02x",
-								 consume,
-								 buf[0], buf[1], buf[2],
-								 buf[3], buf[4], buf[5]);
-					}
-
-					for (int i = consume; i < buf_len; i++)
-						buf[i - consume] = buf[i];
-					buf_len -= consume;
+					DEBUG_PR("drop %d bytes: %02x %02x %02x %02x %02x %02x",
+							 consume,
+							 buf[0], buf[1], buf[2],
+							 buf[3], buf[4], buf[5]);
 				}
-			
+
+				for (int i = consume; i < buf_len; i++)
+					buf[i - consume] = buf[i];
+				buf_len -= consume;
+			}
 		}
 		if (msgrcv(cfg->thread_ID[1], &msg, sizeof(msg.cmd), 1, IPC_NOWAIT) >= 0)
 		{
@@ -807,30 +804,33 @@ void *lidar_thread_proc_uart(void *param)
 				char buf[20] = {0};
 				if (strcmp(cfg->type, "uart") == 0)
 				{
-					if (!uart_talk(cfg->fd, 6, "LUUIDH", 11, "PRODUCT SN:", 9, buf))
+					if (uart_talk(cfg->fd, 6, "LUUIDH", 11, "PRODUCT SN:", 16, buf))
 					{
-						DEBUG_PR("uart GetDevInfo_MSG failed\n");
-						break;
+						printf("uart GetDevInfo_MSG %d\n",buf);
+					}
+					else if (!uart_talk(cfg->fd, 6, "LUUIDH", 10, "VENDOR ID:", 16, buf))
+					{
+						printf("uart GetDevInfo_MSG %d\n",buf);
 					}
 					memcpy(eepromv101->dev_sn, buf, sizeof(buf));
 				}
-				else if (strcmp(cfg->type, "udp_uart") == 0)
+				else if (strcmp(cfg->type, "vpc") == 0)
 				{
 					if (!uart_talk3(cfg->fd, 0x4753, rand(), 6, "LUUIDH", sizeof(EEpromV101), eepromv101))
 					{
-						DEBUG_PR("udp_uart GetDevInfo_MSG failed\n");
+						DEBUG_PR("vpc GetDevInfo_MSG failed\n");
 						break;
 						//((void (*)(int, void*))cfg->callback)(2, eepromv101);
 					}
 					memcpy(eepromv101, eepromv101, sizeof(EEpromV101));
 				}
-
+				//printf("%d %s %s\n", __LINE__,__FUNCTION__,eepromv101->dev_sn);
 				USER_MSG msg2;
 				msg2.type = 2;
 				msg2.cmd.type2 = msg.cmd.type2;
 				memcpy(msg2.cmd.str, eepromv101, sizeof(EEpromV101));
 				msgsnd(cfg->thread_ID[1], &msg2, sizeof(msg2.cmd), 0);
-
+				delete eepromv101;
 				break;
 			}
 			case SetDevInfo_MSG:
@@ -854,7 +854,7 @@ void *lidar_thread_proc_uart(void *param)
 				{
 					write(cfg->fd, cmd, 6);
 				}
-				else if (strcmp(cfg->type, "udp_uart") == 0)
+				else if (strcmp(cfg->type, "vpc") == 0)
 				{
 					//特殊说明，虚拟串口的方式，重启命令只能调用一次，即雷达断开连接
 					if (uart_talk2(cfg->fd, 0x0043, rand(), 6, cmd, 3, buf1))
@@ -862,6 +862,7 @@ void *lidar_thread_proc_uart(void *param)
 						printf("set LiDAR %s to %s\n", cmd, buf1);
 					}
 				}
+
 				USER_MSG msg2;
 				msg2.type = 2;
 				msg2.cmd.type2 = msg.cmd.type2;
@@ -921,7 +922,5 @@ void *lidar_thread_proc_uart(void *param)
 			}
 		}
 	}
-
-	// close(fd);
 	return 0;
 }

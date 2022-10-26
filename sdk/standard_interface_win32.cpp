@@ -27,7 +27,7 @@ bool read_config(const char* cfg_file_name, RunConfig& cfg)
 	std::string type;
 	std::string baud_rate, port;
 	std::string service_port, is_open_service;
-
+	std::string alarm_msg;
 	while (getline(infile, s))
 	{
 		std::string tmp;
@@ -142,7 +142,12 @@ bool read_config(const char* cfg_file_name, RunConfig& cfg)
 		else if (tmp == "is_open_service")
 		{
 			getline(linestream, is_open_service, ':');
-			cfg.is_open_service = atoi(is_open_service.c_str());;
+			cfg.is_open_service = atoi(is_open_service.c_str());
+		}
+		else if (tmp == "alarm_msg")
+		{
+			getline(linestream, alarm_msg, ':');
+			cfg.alarm_msg = atoi(alarm_msg.c_str());
 		}
 	}
 	return true;

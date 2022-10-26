@@ -191,6 +191,7 @@ struct RunConfig
 	char group_ip[16];//组播IP
 	// control
 	bool should_quit;	  //CN:退出标志位									EN:quit flag	
+	int alarm_msg;//是否打开防区数据开关  1点云数据  3 点云数据+防区信息
 	char version[64];//硬件版本号
 #ifdef __linux
 	int msgid;//消息队列ID

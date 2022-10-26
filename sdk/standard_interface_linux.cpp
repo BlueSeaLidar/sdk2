@@ -27,7 +27,7 @@ bool read_config(const char* cfg_file_name, RunConfig& cfg)
 	std::string type;
 	std::string baud_rate, port;
 	std::string service_port, is_open_service;
-	
+	std::string alarm_msg;
 	while (getline(infile, s))
 	{
 		
@@ -144,6 +144,11 @@ bool read_config(const char* cfg_file_name, RunConfig& cfg)
 			getline(linestream, is_open_service, ':');
 			cfg.is_open_service = atoi(is_open_service.c_str());;
 		}
+		else if (tmp == "alarm_msg")
+		{
+			getline(linestream, alarm_msg, ':');
+			cfg.alarm_msg = atoi(alarm_msg.c_str());
+		}
 	}
 	return true;
 }
@@ -191,7 +196,7 @@ int openDev(RunConfig& cfg)
 		//传入设备句柄
 		cfg.fd = fd;
 		g_cfg = &cfg;
-		cfg.thread_ID[1] = msgget(0x1234, IPC_CREAT | 0664);
+		cfg.thread_ID[1] = msgget(0x12345, IPC_CREAT | 0664);
 		if (pthread_create(&cfg.thread, NULL, lidar_thread_proc_uart, &cfg) != 0)
 			return THREAD_CREATE_FAILED;
 		INFO_PR("Lidar is open success\n");
@@ -207,7 +212,7 @@ int openDev(RunConfig& cfg)
 		//传入设备句柄
 		cfg.fd = fd;
 		g_cfg = &cfg;
-		cfg.thread_ID[1] = msgget(0x1234, IPC_CREAT | 0664);
+		cfg.thread_ID[1] = msgget(0x12345, IPC_CREAT | 0664);
 		if (pthread_create(&cfg.thread, NULL, lidar_thread_proc_udp, &cfg) != 0)
 			return THREAD_CREATE_FAILED;
 
@@ -264,12 +269,10 @@ int getLidarData(long threadID, bool dataGet)
 }
 int GetDevInfo(long threadID, EEpromV101& data)
 {
-
 	USER_MSG msg;
 	msg.type = 1;
 	msg.cmd.type2 = GetDevInfo_MSG;
 	int res = msgsnd(threadID, &msg, sizeof(msg.cmd), 0);
-
 	USER_MSG msg2;
 	sleep(0.5);
 	int index = 5;
@@ -279,8 +282,6 @@ int GetDevInfo(long threadID, EEpromV101& data)
 		{
 			if (msg2.cmd.type2 == GetDevInfo_MSG)
 			{
-				// EEpromV101 *eepromv101 = new EEpromV101;
-				// memset(eepromv101, 0, sizeof(EEpromV101));
 				memcpy(&data, msg2.cmd.str, sizeof(EEpromV101));
 				INFO_PR("GetDevInfo recv MSG\n");
 				return SUCCESS;
@@ -301,13 +302,13 @@ int SetDevInfo_extre(long threadID, DevData& data)
 	msg.cmd.type2 = SetDevInfo_MSG;
 	memcpy(&msg.cmd.str, &data, sizeof(DevData));
 	int res = msgsnd(threadID, &msg, sizeof(msg.cmd), 0);
-
+	printf("%d %s\n", __LINE__,__FUNCTION__);
 	USER_MSG msg2;
 	sleep(0.5);
 	int index = 5;
 	while (index--)
 	{
-		if (msgrcv(threadID, &msg2, sizeof(msg2.cmd), 2, IPC_NOWAIT) >= 0)
+		if (msgrcv(threadID, &msg2, sizeof(msg.cmd), 2, IPC_NOWAIT) >= 0)
 		{
 			if (msg2.cmd.type2 == SetDevInfo_MSG)
 			{
@@ -475,8 +476,8 @@ int ZoneSection(long threadID, int section, int mode)
 		{
 			if (msg2.cmd.type2 == Set_ZoneSection_MSG)
 			{
-				char *rev= new char[2];
-				memcpy(rev, &msg2.cmd.str, sizeof(char)*2);
+				char rev[2]={0};
+				memcpy(rev, &msg2.cmd.str, 2);
 				INFO_PR("%s recv MSG %s\n", __FUNCTION__,rev);
 				if(strcmp(rev,"OK")==0)
 					return SUCCESS;
