@@ -165,6 +165,20 @@ struct LidarMsgHdr
 	uint32_t reserved[11];	//保留
 };
 
+struct ShadowsFilterParam 
+{
+	int enable;
+	double max_range;       
+	double min_angle, max_angle;    
+	int window;
+};
+
+struct MedianFilterParam
+{
+	int enable;
+	int window;
+};
+
 //运行配置
 struct RunConfig 
 {
@@ -208,6 +222,11 @@ struct RunConfig
 	long thread_ID[3];//主线程，数据子线程，服务子线程
 	int service_port;//本地服务启用端口
 	int is_open_service;//是否启用本地服务
+
+
+	// scan filter
+	ShadowsFilterParam shadows_filter;
+	MedianFilterParam median_filter;
 };
 
 
@@ -481,5 +500,8 @@ void gettimeofday(timeval* tv, void*);
 #endif
 
 
+
+int ShadowsFilter(PointData*, const ShadowsFilterParam&);
+int MedianFilter(PointData*, const MedianFilterParam&);
 
 #endif
