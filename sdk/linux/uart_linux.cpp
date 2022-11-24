@@ -771,6 +771,14 @@ void *lidar_thread_proc_uart(void *param)
 						//执行回调函数
 						if (tmp.N > 0)
 						{
+                            if (cfg->shadows_filter.enable)
+							{
+								ShadowsFilter(&tmp, cfg->shadows_filter);
+							}
+							if (cfg->median_filter.enable)
+							{
+								MedianFilter(&tmp, cfg->median_filter);
+							}
 							((void (*)(int, void *))cfg->callback)(1, &tmp);
 							memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
 						}

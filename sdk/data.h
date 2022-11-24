@@ -165,11 +165,11 @@ struct LidarMsgHdr
 	uint32_t reserved[11];	//保留
 };
 
-struct ShadowsFilterParam 
+struct ShadowsFilterParam
 {
 	int enable;
-	double max_range;       
-	double min_angle, max_angle;    
+	double max_range;
+	double min_angle, max_angle;
 	int window;
 };
 
@@ -178,17 +178,16 @@ struct MedianFilterParam
 	int enable;
 	int window;
 };
-
 //运行配置
 struct RunConfig 
 {
 	// paramters
 	char type[16];//"uart"   or   "udp"  "vpc"
     char port[16];//端口名称
-    int baud_rate;
-    int local_port;       //CN:端口名称										 EN:port name
-	int unit_is_mm;		  //CN:波特率										 EN:baud rate
-	int with_confidence;  //CN:数据打包模式，2：2字节， 3：3字节   			  EN:Data packing mode, 2: 2 bytes, 3: 3 bytes Special instructions: 2 for the old model, 3 for the new model
+    int baud_rate;//CN:波特率										 EN:baud rate
+    int local_port;       //CN:本地端口号							 EN:local port
+	int unit_is_mm;		  //CN:点云数据单位                          EN:unit（1.mm  0.cm）
+	int with_confidence;  //CN:是否带强度， 0否  1是   			     EN:With or without strength,0 false  1 true
 	int resample;		  //CN:分辨率										EN:Resolution
 	int with_deshadow;	  //CN:去拖点(0：关闭，1：开启)						 EN:go to drag point (0: off, 1: on)
 	int with_smooth;	  //CN:数据平滑(0：关闭， 1：开启)					 EN:Data smoothing (0: off, 1: on)
@@ -223,7 +222,6 @@ struct RunConfig
 	int service_port;//本地服务启用端口
 	int is_open_service;//是否启用本地服务
 
-
 	// scan filter
 	ShadowsFilterParam shadows_filter;
 	MedianFilterParam median_filter;
@@ -240,23 +238,23 @@ struct RawDataHdr
 {
 	unsigned short code; //CN:帧头				EN:data frame header
 	unsigned short N;    //CN:扇区内测距点数	EN:The number of ranging points in the sector
-	unsigned short angle;//CN:对应测距角度		EN:Corresponding ranging angle
+	unsigned short angle;//CN:扇区起始角度		EN:Corresponding ranging angle
 };
 
 struct RawDataHdr2
 {
 	unsigned short code;	//CN:帧头				EN:data frame header
 	unsigned short N;		//CN:扇区内测距点数		EN:The number of ranging points in the sector
-	unsigned short angle;	//CN:对应测距角度		EN:Corresponding ranging angle
-	unsigned short span;	//CN:扇区个数			EN:Number of sectors
+	unsigned short angle;	//CN:扇区起始角度 		EN:Sector starting angle
+	unsigned short span;	//CN:扇区大小 			EN:sector size
 };
 
 struct RawDataHdr3
 {
 	unsigned short code;	//CN:帧头				EN:data frame header
 	unsigned short N;		//CN:扇区内测距点数		EN:The number of ranging points in the sector
-	unsigned short angle;	//CN:对应测距角度		EN:Corresponding ranging angle
-	unsigned short span;	//CN:扇区个数			EN:Number of sectors
+	unsigned short angle;	//CN:扇区起始角度		EN:Corresponding ranging angle
+	unsigned short span;	//CN:扇区大小			EN:sectors size
 	unsigned short fbase;	//CN:扇区起始偏差		EN:Sector start offset
 	unsigned short first;	//CN:第一个点角度		EN:first point angle
 	unsigned short last;	//CN:最后一个点角度		EN:last point angle
@@ -291,11 +289,11 @@ struct FanSegment
 struct RawDataHdr99 {
 	uint16_t code;			//CN:帧头，固定为0x99FA			EN:Frame header, fixed at 0x99FA
 	uint16_t N;				//CN:扇区内这个分包的测距点数	EN:The number of ranging points for this subpacket in the sector
-	uint16_t from;			//CN:扇区起始角度				EN:Sector start angle
+	uint16_t from;			//CN:扇区起始角度			    EN:Sector start angle
 	uint16_t total;			//CN:一整圈数据点个数			EN:The number of data points in a full circle
 	uint32_t flags;			//CN:状态开关标识				EN:status switch flag
 	uint32_t timestamp;		//CN:时间戳						EN:timestamp 
-	uint32_t dev_no;		//CN:设备号						EN:device ID
+	uint32_t dev_no;		//CN:设备编号					EN:device ID
 	uint32_t reserved[3];	//CN:保留位						EN:reserved
 };
 
@@ -305,7 +303,7 @@ struct RawData
 {
 	unsigned short code;		//CN:帧头										EN:data frame header
 	unsigned short N;			//CN:扇区内测距点数								EN:The number of ranging points in the sector
-	unsigned short angle;		//CN:当前扇区的起始角度	*10						EN:The starting angle of the current sector *10
+	unsigned short angle;		//CN:当前扇区的起始角度							EN:The starting angle of the current sector *10
 	unsigned short span;		//CN:扇区的总角度(扇区终止角度-扇区起始角度)	EN:The total angle of the sector (sector end angle - sector start angle)
 	unsigned short fbase;		//CN:扇区起始偏差 （NULL）						EN:Sector start offset（NULL）
 	unsigned short first;		//CN:第一个点角度  (NULL)						EN:first point angle（NULL）
@@ -498,10 +496,6 @@ unsigned int stm32crc(unsigned int* ptr, unsigned int len);
 void gettimeofday(timeval* tv, void*);
 //#define  sleep(x)   Sleep(x * 1000)
 #endif
-
-
-
 int ShadowsFilter(PointData*, const ShadowsFilterParam&);
 int MedianFilter(PointData*, const MedianFilterParam&);
-
 #endif

@@ -1,6 +1,6 @@
 #include "data.h"
 #include <set>
-
+#include<math.h>
 #define M_PI 3.14159265358979323846
 
 inline double getAngleWithViewpoint(float r1, float r2, float included_angle)
@@ -64,7 +64,8 @@ int ShadowsFilter(PointData* scan_in, const ShadowsFilterParam& param)
 	int nr = 0;
 	for (std::set<int>::iterator it = indices_to_delete.begin(); it != indices_to_delete.end(); ++it)
 	{
-		scan_in->points[*it].distance = std::numeric_limits<float>::quiet_NaN();
+		//scan_in->points[*it].distance = std::numeric_limits<float>::quiet_NaN();
+		scan_in->points[*it].distance = 0;
 		nr++;
 	}
 

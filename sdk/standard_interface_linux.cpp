@@ -15,7 +15,7 @@ bool read_config(const char* cfg_file_name, RunConfig& cfg)
 	if (!infile.is_open())
 		return false;
 
-	std::string s;
+	std::string s,t;
 	std::string lidar_ip_s, lidar_port_s, local_port_s;
 	std::string unit_is_mm_s, with_confidence_s, resample_s;
 	std::string with_deshadow_s, with_smooth_s, with_chk_s;
@@ -148,6 +148,41 @@ bool read_config(const char* cfg_file_name, RunConfig& cfg)
 		{
 			getline(linestream, alarm_msg, ':');
 			cfg.alarm_msg = atoi(alarm_msg.c_str());
+		}
+        else if (tmp == "shadow_filter.enable")
+		{
+			getline(linestream, t, ':');
+			cfg.shadows_filter.enable = atoi(t.c_str());
+		}
+		else if (tmp == "shadow_filter.max_range")
+		{
+			getline(linestream, t, ':');
+			cfg.shadows_filter.max_range = atoi(t.c_str());
+		}
+		else if (tmp == "shadow_filter.min_angle")
+		{
+			getline(linestream, t, ':');
+			cfg.shadows_filter.min_angle = atoi(t.c_str());
+		}
+		else if (tmp == "shadow_filter.max_angle")
+		{
+			getline(linestream, t, ':');
+			cfg.shadows_filter.max_angle = atoi(t.c_str());
+		}
+		else if (tmp == "shadow_filter.window")
+		{
+			getline(linestream, t, ':');
+			cfg.shadows_filter.window = atoi(t.c_str());
+		}
+		else if (tmp == "median_filter.enable")
+		{
+			getline(linestream, t, ':');
+			cfg.median_filter.enable = atoi(t.c_str());
+		}
+		else if (tmp == "median_filter.window")
+		{
+			getline(linestream, t, ':');
+			cfg.median_filter.window = atoi(t.c_str());
 		}
 	}
 	return true;
