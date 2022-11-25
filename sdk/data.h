@@ -196,7 +196,8 @@ struct RunConfig
 	int rpm;			  //CN:转速											EN:Rotating speed
 	int output_scan;	  //CN:是否打印 (0：不打印   1：打印 )				 EN:Whether to print (0: not print 1: print)
 	int output_360;		  //CN:扇形打印(0:部分扇形打印  1：完成的)			 EN:Fan printing (0: Partial fan printing 1: Completed)
-	int from_zero;		  //CN:角度显示坐标   0  -180°-180°   1  0°到360度  EN:Angle display coordinates 0 -180°-180° 1 0° to 360°
+	int from_zero;		  //CN:是否从0度角开始统计							EN:Whether to start counting from 0 degree angle
+	int collect_angle;
 	char output_file[256];//CN:数据保存文件绝对路径							EN:Data save file absolute path
 	char lidar_ip[256];	  //CN:雷达的IP地址									EN:Radar IP address
 	int lidar_port;		  //CN:雷达的端口号									EN:Radar  port
@@ -459,11 +460,12 @@ bool parse_data_x(int len, unsigned char* buf,
 				  2.output_file[const char*,IN]  CN:输出的数据文件名称	EN:output data file name
 				  3.data[PointData,out]  CN:存储一圈点云数据的结构体	EN:structure that stores a circle of point cloud data
 				  4.from_zero[int,IN]  CN:包数据起始角度（0/180）		EN:Start angle of packet data（0/180）
+				  5.collect_angle[int,IN] CN:开始收集的起始角度         EN:Starting angle of starting collection
 
 * @return:        Null
 * @others:        Null
 *************************************************/
-void data_process(const RawData& raw, const char* output_file, PointData& data, int from_zero);
+void data_process(const RawData& raw, const char* output_file, PointData& data, int from_zero, int collect_angle);
 /************************************************
 * @functionName:  data_process
 * @date:          2022-03-25
@@ -488,7 +490,7 @@ void fan_data_process(const RawData& raw, const char* output_file, PointData&dat
 * @return:        Null
 * @others:        Null
 *************************************************/
-void whole_data_process(const RawData& raw, bool from_zero, const char* output_file, PointData& data);
+void whole_data_process(const RawData& raw, bool from_zero,int collect_angle, const char* output_file, PointData& data);
 
 unsigned int stm32crc(unsigned int* ptr, unsigned int len);
 

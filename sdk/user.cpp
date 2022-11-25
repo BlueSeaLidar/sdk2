@@ -31,12 +31,12 @@ vector<RawData*> datas;
 
 
 // 获取360°完整扇区的点
-void data_process(const RawData &raw, const char* output_file, PointData& tmp, int from_zero)
+void data_process(const RawData &raw, const char* output_file, PointData& tmp, int from_zero,int collect_angle)
 {
 	RawData *data = new RawData;
 	memcpy(data, &raw, sizeof(RawData));
 	datas.push_back(data);
-	if ((from_zero&& raw.angle==0) ||(!from_zero&&raw.angle + raw.span == 1800))
+	if ((from_zero&& raw.angle==0) ||(!from_zero&&raw.angle + raw.span == 1800 + collect_angle*10))
 	{
 		//from_zero:true,A lap of data starts at 0 degrees
 		//from_zero:false,A lap of data starts at 180 degrees
@@ -86,7 +86,6 @@ void data_process(const RawData &raw, const char* output_file, PointData& tmp, i
 		delete data;
 	}
 	datas.clear();
-
 	tmp.N = count;
 	memcpy(tmp.ts, timestamp, sizeof(timestamp));
 	memcpy(tmp.points, points, sizeof(DataPoint)* count);
@@ -126,15 +125,15 @@ void fan_data_process(const RawData &raw, const char *output_file, PointData &tm
 }
 
 vector<RawData *> whole_datas;
-void whole_data_process(const RawData &raw, bool from_zero, const char *output_file, PointData& tmp)
+void whole_data_process(const RawData &raw, bool from_zero, int collect_angle, const char *output_file, PointData& tmp)
 {
 	RawData *data = new RawData;
 	memcpy(data, &raw, sizeof(RawData));
 	whole_datas.push_back(data);
-	
-	
-	if ((from_zero && raw.angle == 0) || (!from_zero && raw.angle + raw.span == 1800))
+
+	if ((from_zero && raw.angle == 0) || (!from_zero && raw.angle + raw.span == 1800+collect_angle * 10))
 	{
+
 		//from_zero:true,A lap of data starts at 0 degrees
 		//from_zero:false,A lap of data starts at 180 degrees
 	}

@@ -665,12 +665,14 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 							else
 							{
 								// 全部点位，全部扇区
-								whole_data_process(dat, cfg->from_zero, cfg->output_file, tmp);
+								whole_data_process(dat, cfg->from_zero,cfg->collect_angle, cfg->output_file, tmp);
 							}
 							if (tmp.N > 0)
 							{
 								((void(*)(int, void*))cfg->callback)(1, &tmp);
 								memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
+								
+
 							}
 						}
 						//证明雷达已经正常运行

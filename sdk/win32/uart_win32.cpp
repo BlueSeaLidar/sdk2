@@ -658,26 +658,24 @@ DWORD  WINAPI  lidar_thread_proc_uart(void*  param)
 							memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
 						}
 						memset(&tmp, 0, sizeof(PointData));
-						data_process(dat, cfg->output_file, tmp, cfg->from_zero);
+						data_process(dat, cfg->output_file, tmp, cfg->from_zero,cfg->collect_angle);
+						
 						//执行回调函数
 						if (tmp.N > 0)
 						{
+
 							//E100系列
 							if (cfg->shadows_filter.enable)
 							{
-								//printf("111 :%d\n", tmp.N);
 								int nr = ShadowsFilter(&tmp, cfg->shadows_filter);
-								//printf("111 :%d\n", nr);
 							}
 							if (cfg->median_filter.enable)
 							{
-								//printf("222 :%d\n", tmp.N);
 								int nr = MedianFilter(&tmp, cfg->median_filter);
-								//printf("222 :%d\n", nr);
 							}
 							((void(*)(int, void*))cfg->callback)(1, &tmp);
 							memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
-							//printf("test:%d", cfg->pointdata.points->angle)
+							//printf("test:%f\n", cfg->pointdata.points[0].distance);
 						}
 					}
 					//证明雷达已经正常运行

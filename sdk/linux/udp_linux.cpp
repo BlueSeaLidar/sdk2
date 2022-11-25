@@ -677,7 +677,7 @@ void *lidar_thread_proc_udp(void *param)
 							else
 							{
 								// 整圈
-								whole_data_process(dat, cfg->from_zero, cfg->output_file, tmp);
+								whole_data_process(dat, cfg->from_zero, cfg->collect_angle,cfg->output_file, tmp);
 							}
 							if (tmp.N > 0)
 							{

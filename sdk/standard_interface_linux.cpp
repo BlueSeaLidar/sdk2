@@ -20,7 +20,7 @@ bool read_config(const char* cfg_file_name, RunConfig& cfg)
 	std::string unit_is_mm_s, with_confidence_s, resample_s;
 	std::string with_deshadow_s, with_smooth_s, with_chk_s;
 	std::string raw_bytes_s, rpm_s, output_scan_s, output_360_s;
-	std::string from_zero_s;
+	std::string from_zero_s,collect_angle;
 	std::string output_file;
 	std::string is_group_listener;
 	std::string group_ip;
@@ -118,6 +118,11 @@ bool read_config(const char* cfg_file_name, RunConfig& cfg)
 		{
 			getline(linestream, from_zero_s, ':');
 			cfg.from_zero = atoi(from_zero_s.c_str());
+		}
+		else if (tmp == "collect_angle")
+		{
+			getline(linestream, collect_angle, ':');
+			cfg.collect_angle = atoi(collect_angle.c_str());
 		}
 		else if (tmp == "output_file")
 		{
