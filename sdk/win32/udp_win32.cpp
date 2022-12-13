@@ -442,6 +442,7 @@ bool udp_talk_C_PACK(int fd_udp, const char* lidar_ip, int lidar_port,
 	return false;
 }
 
+
 void send_cmd_udp_f(int fd_udp, const char* dev_ip, int dev_port,
 	int cmd, int sn,
 	int len, const void* snd_buf, bool bpr)
@@ -545,6 +546,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 		{			
 			int ret = select(cfg->fd + 1, &fds, NULL, NULL, &to);
 			gettimeofday(&tv, NULL);
+
 			if (tv.tv_sec > tto)
 			{
 				KeepAlive alive;
@@ -628,7 +630,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 					RawData dat;
 					LidarMsgHdr zone;
 					memset(&zone, 0, sizeof(LidarMsgHdr));
-					bool is_pack;
+					int is_pack;
 					int consume;
 					if (cfg->data_bytes==3)
 					{
@@ -651,12 +653,17 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 						//memset(&tmp, 0, sizeof(PointData));
 						if (cfg->output_scan)
 						{
-							if (zone.timestamp != 0)
+							if (is_pack==2)
 							{
 								((void(*)(int, void*))cfg->callback)(2, &zone);
 								memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
 								continue;
 							}
+							else if (is_pack == 3)
+							{
+								continue;
+							}
+					
 							if (!cfg->output_360)
 							{
 								//多扇区分次发送

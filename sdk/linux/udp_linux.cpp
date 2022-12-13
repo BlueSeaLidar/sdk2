@@ -641,7 +641,7 @@ void *lidar_thread_proc_udp(void *param)
 					RawData dat;
 					LidarMsgHdr zone;
 					memset(&zone, 0, sizeof(LidarMsgHdr));
-					bool is_pack;
+					int is_pack;
 					int consume;
 					if (cfg->data_bytes == 3)
 					{
@@ -662,10 +662,14 @@ void *lidar_thread_proc_udp(void *param)
 						//！！！EN:User needs to extract data operation, you can refer to this function，For details about other printing operations, please refer to the user.cpp file
 						if (cfg->output_scan)
 						{
-							if (zone.timestamp != 0)
+							if (is_pack==2)
 							{
 								((void (*)(int, void *))cfg->callback)(2, &zone);
 								memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
+								continue;
+							}
+                            else if (is_pack == 3)
+							{
 								continue;
 							}
 							if (!cfg->output_360)

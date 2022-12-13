@@ -427,7 +427,7 @@ bool parse_data(int len, unsigned char* buf,
 
 /************************************************
 * @functionName:  parse_data_x
-* @date:          2022-03-25
+* @date:          2022-12-12
 * @description:   CN:多种格式解析数据	EN:Parse data in multiple formats
 * @Parameter:
 				  1.len[int,IN]					CN:数据的长度						EN:length of data
@@ -439,10 +439,10 @@ bool parse_data(int len, unsigned char* buf,
 				  7.consume[int,OUT]			CN:解析处理的数据长度				EN:Parsing data length
 				  8.with_chk[int,IN]			CN:数据校验标志位					EN:data check flag
 
-* @return:        bool(true/false)
+* @return:        int    0 false  1 point cloud data  2.Alarm data  3.Clock synchronization data
 * @others:        Null
 *************************************************/
-bool parse_data_x(int len, unsigned char* buf, 
+int parse_data_x(int len, unsigned char* buf, 
 	int& span, int& is_mm, int& with_conf, 
 	RawData& dat, int& consume, int with_chk, LidarMsgHdr& zone);
 

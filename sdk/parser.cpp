@@ -108,7 +108,7 @@ static void PackFanData(FanSegment* seg, RawData& rdat)
 	//if (!dat) { printf("out of memory\n"); return NULL; }
 	RawData* dat = &rdat;
 
-	dat->code = 0xfac7;
+	dat->code = 0xfac7;                       
 	dat->N = seg->hdr.whole_fan;
 	dat->angle = seg->hdr.beg_ang / 100; // 0.1 degree
 	dat->span = (seg->hdr.end_ang - seg->hdr.beg_ang) / 100; // 0.1 degree
@@ -473,7 +473,7 @@ bool GetData0x99(const RawDataHdr99& hdr, unsigned char* pdat, int with_chk, Raw
 //}
 int pack_format = 0xce;
 
-bool parse_data_x(int len, unsigned char* buf, 
+int parse_data_x(int len, unsigned char* buf, 
 	int& span, int& is_mm, int& with_conf, 
 	RawData& dat, int& consume, int with_chk, LidarMsgHdr &zone)
 {
@@ -486,9 +486,14 @@ bool parse_data_x(int len, unsigned char* buf,
 			LidarMsgHdr* hdr = (LidarMsgHdr*)(buf + idx);
 			memcpy(&zone, hdr, sizeof(LidarMsgHdr));
 			consume = idx + sizeof(LidarMsgHdr);
-			return true;
+			return 2;
 		}
-
+		//时钟同步信息
+		if (buf[idx] == 0x4c && buf[idx+1] == 0x48 && (unsigned char)buf[idx+2] == 0xbe && (unsigned char)buf[idx+3] == 0xb4)
+		{
+			consume = idx + len;
+			return 3;
+		}
 		if (buf[idx] == 'S' && buf[idx + 1] == 'T' && buf[idx + 6] == 'E' && buf[idx + 7] == 'D')
 		{
 			unsigned char flag = buf[idx + 2];
@@ -516,8 +521,15 @@ bool parse_data_x(int len, unsigned char* buf,
 		if (buf[idx] == 0x99) {
 			RawDataHdr99 hdr99;
 			memcpy(&hdr99, buf + idx, HDR99_SIZE);
+			if (hdr99.total == 0)
+			{
+				printf("bad num hdr99 \n");
+				idx += 2;
+				continue;
+			}
 			int hdr99_span = hdr99.N * 3600 / hdr99.total;
-			if (hdr99_span % 90 != 0) {
+			if (hdr99_span % 90 != 0) 
+			{
 				printf("bad angle %d \n", hdr99_span);
 				idx += 2;
 				continue;
