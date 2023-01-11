@@ -658,7 +658,8 @@ DWORD  WINAPI  lidar_thread_proc_uart(void*  param)
 							memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
 						}
 						memset(&tmp, 0, sizeof(PointData));
-						data_process(dat, cfg->output_file, tmp, cfg->from_zero,cfg->collect_angle);
+						//printf("%d\n", dat.N);
+						whole_data_process(dat,  cfg->from_zero, cfg->collect_angle, cfg->output_file,  tmp);
 						
 						//执行回调函数
 						if (tmp.N > 0)
@@ -675,7 +676,6 @@ DWORD  WINAPI  lidar_thread_proc_uart(void*  param)
 							}
 							((void(*)(int, void*))cfg->callback)(1, &tmp);
 							memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
-							//printf("test:%f\n", cfg->pointdata.points[0].distance);
 						}
 					}
 					//证明雷达已经正常运行

@@ -149,6 +149,7 @@ struct PointData
 	DataPoint points[10000];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
 	uint32_t ts[2];				//CN:时间戳(秒和微秒)							EN:timestamps(Second and microseconds )
 };
+//心跳包
 struct LidarMsgHdr
 {
 	char sign[4];  	// must be "LMSG"
@@ -164,7 +165,7 @@ struct LidarMsgHdr
 	uint8_t all_states[32];//	设备各功能状态
 	uint32_t reserved[11];	//保留
 };
-
+//E100系列过滤点云数据
 struct ShadowsFilterParam
 {
 	int enable;
@@ -172,58 +173,57 @@ struct ShadowsFilterParam
 	double min_angle, max_angle;
 	int window;
 };
-
+//E100系列过滤点云数据
 struct MedianFilterParam
 {
 	int enable;
 	int window;
 };
-//运行配置
+//运行配置  全局变量
 struct RunConfig 
 {
-	// paramters
-	char type[16];//"uart"   or   "udp"  "vpc"
-    char port[16];//端口名称
-    int baud_rate;//CN:波特率										 EN:baud rate
-    int local_port;       //CN:本地端口号							 EN:local port
-	int unit_is_mm;		  //CN:点云数据单位                          EN:unit（1.mm  0.cm）
-	int with_confidence;  //CN:是否带强度， 0否  1是   			     EN:With or without strength,0 false  1 true
-	int resample;		  //CN:分辨率										EN:Resolution
-	int with_deshadow;	  //CN:去拖点(0：关闭，1：开启)						 EN:go to drag point (0: off, 1: on)
-	int with_smooth;	  //CN:数据平滑(0：关闭， 1：开启)					 EN:Data smoothing (0: off, 1: on)
-	int with_chk;		  //CN:数据校验(0:关闭 1:打开)						 EN:Data check (0: close 1: open)
-	int data_bytes;		  //CN:数据打包模式，2：2字节， 3：3字节   			  EN:Data packing mode, 2: 2 bytes, 3: 3 bytes Special instructions: 2 for the old model, 3 for the new model
-	int rpm;			  //CN:转速											EN:Rotating speed
-	int output_scan;	  //CN:是否打印 (0：不打印   1：打印 )				 EN:Whether to print (0: not print 1: print)
-	int output_360;		  //CN:扇形打印(0:部分扇形打印  1：完成的)			 EN:Fan printing (0: Partial fan printing 1: Completed)
-	int from_zero;		  //CN:是否从0度角开始统计							EN:Whether to start counting from 0 degree angle
-	int collect_angle;
-	char output_file[256];//CN:数据保存文件绝对路径							EN:Data save file absolute path
-	char lidar_ip[256];	  //CN:雷达的IP地址									EN:Radar IP address
-	int lidar_port;		  //CN:雷达的端口号									EN:Radar  port
-	int is_group_listener;//0正常模式   1监听模式   2发送模式
-	char group_ip[16];//组播IP
+	char type[16];			//CN:传输类型							EN:transmission type	for example:"uart"   or   "udp"  "vpc"
+    char port[16];			//CN:串口名称							EN:uart name
+    int baud_rate;			//CN:波特率								EN:baud rate
+	int lidar_port;			//CN:目标(雷达)端口号					EN:target(Radar) port
+    int local_port;			//CN:本地端口号						    EN:local port
+	int unit_is_mm;			//CN:数据单位(1.mm 0 cm)                EN:unit（1.mm  0.cm）
+	int with_confidence;	//CN:是否带强度， 0否  1是   			EN:With or without strength,0 false  1 true
+	int resample;			//CN:分辨率								EN:Resolution
+	int with_deshadow;		//CN:去拖点(0：关闭，1：开启)			EN:go to drag point (0: off, 1: on)
+	int with_smooth;		//CN:数据平滑(0：关闭， 1：开启)		EN:Data smoothing (0: off, 1: on)
+	int with_chk;			//CN:数据校验(0:关闭 1:打开)			EN:Data check (0: close 1: open)
+	int data_bytes;			//CN:数据打包模式，2：2字节， 3：3字节  EN:Data packing mode, 2: 2 bytes, 3: 3 bytes Special instructions: 2 for the old model, 3 for the new model
+	int rpm;				//CN:转速								EN:Rotating speed
+	int output_scan;		//CN:是否打印 (0：不打印   1：打印 )	EN:Whether to print (0: not print 1: print)
+	int output_360;			//CN:扇形打印(0:部分扇形打印  1：完成的)EN:Fan printing (0: Partial fan printing 1: Completed)
+	int from_zero;			//CN:是否从0度角开始统计				EN:Whether to start counting from 0 degree angle
+	int collect_angle;		//CN:统计起始角度的修正值				EN:Correction value of statistical starting angle
+	char output_file[256];	//CN:数据保存文件绝对路径				EN:Data save file absolute path
+	char lidar_ip[256];		//CN:雷达的IP地址						EN:Radar IP address
+
+	int is_group_listener;	//CN:0正常模式   1监听模式   2发送模式	EN:0 Normal mode 1 Listening mode 2 Sending mode
+	char group_ip[16];		//CN:组播IP								EN:Multicast IP
 	// control
-	bool should_quit;	  //CN:退出标志位									EN:quit flag	
-	int alarm_msg;//是否打开防区数据开关  1点云数据  3 点云数据+防区信息
-	char version[64];//硬件版本号
+	bool should_quit;		//CN:退出标志位							EN:quit flag	
+	int alarm_msg;			//CN:是否打开防区报警					EN:Whether to turn on the zone alarm
+	char version[64];		//CN:硬件版本号							EN:Hardware version
 #ifdef __linux
 	int msgid;//消息队列ID
-	pthread_t thread;	  //CN:和雷达通信子线程								EN:Sub-thread: responsible for communicating with radar
+	pthread_t thread;		//CN:和雷达通信子线程					EN:Sub-thread: responsible for communicating with radar
 #elif  _WIN32
 	HANDLE thread;
 	HANDLE hStartEvent;
 #endif 
 	int fd;//句柄
-	printfMsg  callback;//信息打印函数指针
-	PointData  pointdata;//单帧点数数据
-	LidarMsgHdr zone;//报警信息数据
-	int datatype;//数据的类型
-	long thread_ID[3];//主线程，数据子线程，服务子线程
-	int service_port;//本地服务启用端口
-	int is_open_service;//是否启用本地服务
+	printfMsg  callback;	//CN:信息打印回调函数					EN:Information printing callback function
+	PointData  pointdata;	//CN:单帧点云数据						EN:Single frame point cloud data
+	LidarMsgHdr zone;		//CN:报警信息数据						EN:Alarm information data
+	long thread_ID[3];		//CN:主线程，数据子线程，服务子线程ID	EN:main thread, data sub-thread, service sub-thread ID
+	int service_port;		//CN:本地服务启用端口					EN:Local service enable port
+	int is_open_service;	//CN:是否启用本地服务					EN:Enable local service
 
-	// scan filter
+	// E100 scan filter
 	ShadowsFilterParam shadows_filter;
 	MedianFilterParam median_filter;
 };
@@ -427,7 +427,7 @@ bool parse_data(int len, unsigned char* buf,
 
 /************************************************
 * @functionName:  parse_data_x
-* @date:          2022-12-12
+* @date:          2023-01-11
 * @description:   CN:多种格式解析数据	EN:Parse data in multiple formats
 * @Parameter:
 				  1.len[int,IN]					CN:数据的长度						EN:length of data
@@ -438,6 +438,7 @@ bool parse_data(int len, unsigned char* buf,
 				  6.dat[RawData,OUT]			CN:解析后保留的数据					EN:Data retained after parsing
 				  7.consume[int,OUT]			CN:解析处理的数据长度				EN:Parsing data length
 				  8.with_chk[int,IN]			CN:数据校验标志位					EN:data check flag
+				  9.zone[LidarMsgHdr,IN]		CN:报警信息数据						EN:Alarm information data
 
 * @return:        int    0 false  1 point cloud data  2.Alarm data  3.Clock synchronization data
 * @others:        Null
@@ -447,45 +448,29 @@ int parse_data_x(int len, unsigned char* buf,
 	RawData& dat, int& consume, int with_chk, LidarMsgHdr& zone);
 
 
-
 /************************************************
-* @functionName:  data_process
-* @date:          2022-03-24
-* @description:   
-					CN:获取全部扇区具体数据（写在循环里，如果没到180°，则累加到数组，继续循环。如果到了180°，就解析全部的扇形数据）
-					EN:Get the specific data of all sectors (write in a loop, if it is less than 180°, 
-						it will be added to the array, the loop will continue, and if it reaches 180°, all sector data will be parsed)
-* @Parameter:
-				  1.raw[RawData,IN]  CN:存储临时数据的结构体			EN:structure to store temp data
-				  2.output_file[const char*,IN]  CN:输出的数据文件名称	EN:output data file name
-				  3.data[PointData,out]  CN:存储一圈点云数据的结构体	EN:structure that stores a circle of point cloud data
-				  4.from_zero[int,IN]  CN:包数据起始角度（0/180）		EN:Start angle of packet data（0/180）
-				  5.collect_angle[int,IN] CN:开始收集的起始角度         EN:Starting angle of starting collection
-
-* @return:        Null
-* @others:        Null
-*************************************************/
-void data_process(const RawData& raw, const char* output_file, PointData& data, int from_zero, int collect_angle);
-/************************************************
-* @functionName:  data_process
-* @date:          2022-03-25
+* @functionName:  fan_data_process
+* @date:          2023-01-11
 * @description:   CN:解析某一个扇区的点数据	EN:Parse point data for a sector
 * @Parameter:
 				  1.raw[RawData,IN]				CN:存储数据的结构体			EN:structure to store data
 				  2.output_file[const char*,IN]	CN:输出文件路径(绝对路径)	EN:output file path (absolute path)
+				  3.data[PointData,OUT]			CN:一个扇区点云数据
 
 * @return:        Null
 * @others:        Null
 *************************************************/
 void fan_data_process(const RawData& raw, const char* output_file, PointData&data);
 /************************************************
-* @functionName:  data_process
-* @date:          2022-03-24
+* @functionName:  whole_data_process
+* @date:          2023-01-10
 * @description:   CN:解析全部扇区的点数据	EN:Parse point data of all sectors
 * @Parameter:
-				  1.raw[RawData,IN]				CN:存储数据的结构体												EN:structure to store data
-				  2.from_zero [bool IN]			CN:转动范围区间(这里是用来设置扇区的范围是-180-180还是0-360)    EN:Rotation range interval (here is used to set the range of the sector is -180-180 or 0-360)
-				  3.output_file[const char*,IN]	CN:输出文件路径(绝对路径)										EN:output file path (absolute path)
+				  1.raw[RawData,IN]				CN:传入一个扇区的数据											EN:Data passed into a sector
+				  2.from_zero [bool IN]			CN:是否从0度开始 统计 一圈数据的起始角度						EN:Whether to start counting the starting angle of a circle of data from 0 degrees
+				  3.collect_angle[int,IN]		CN:起始统计角度的补偿角度										EN:Statistical starting compensation angle for a loop of data
+				  4.output_file[const char*,IN]	CN:输出文件路径(绝对路径)										EN:output file path (absolute path)
+				  5.data[PointData,OUT]			CN:一圈点云数据													EN:Circle of point cloud data
 
 * @return:        Null
 * @others:        Null

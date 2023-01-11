@@ -16,82 +16,12 @@
 
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <vector>
 #include "data.h"
 #include <string>
-#include <signal.h>
+
 using namespace std;
-
-
-int factor = 2;
-vector<RawData*> datas;
-
-
-// 获取360°完整扇区的点
-void data_process(const RawData &raw, const char* output_file, PointData& tmp, int from_zero,int collect_angle)
-{
-	RawData *data = new RawData;
-	memcpy(data, &raw, sizeof(RawData));
-	datas.push_back(data);
-	if ((from_zero&& raw.angle==0) ||(!from_zero&&raw.angle + raw.span == 1800 + collect_angle*10))
-	{
-		//from_zero:true,A lap of data starts at 0 degrees
-		//from_zero:false,A lap of data starts at 180 degrees
-	}
-	else
-	{
-		return;
-	}
-	bool bfirst = true;
-	uint32_t timestamp[2] = {0};
-	int count = 0, n = 0, angles = 0;
-	for (vector<RawData *>::iterator it = datas.begin(); it != datas.end(); ++it)
-	{
-		data = *it;
-		angles += data->span;
-		count += data->N;
-		if (bfirst)
-		{
-			timestamp[0] = data->ts[0];
-			timestamp[1] = data->ts[1];
-			bfirst = false;
-		}
-		n++;
-	}
-
-	if (angles != 3600)
-	{
-		DEBUG_PR("angle sum %d, drop %d fans %d points\n", angles, n, count);
-		for (vector<RawData *>::iterator it = datas.begin(); it != datas.end(); ++it)
-		{
-			data = *it;
-			delete data;
-		}
-		datas.clear();
-	}
-
-	DataPoint *points = new DataPoint[count];
-	count = 0;
-
-	for (vector<RawData *>::iterator it = datas.begin(); it != datas.end(); ++it)
-	{
-		data = *it;
-		for (int i = 0; i < data->N; i++)
-		{
-			points[count++] = data->points[i];
-		}
-		delete data;
-	}
-	datas.clear();
-	tmp.N = count;
-	memcpy(tmp.ts, timestamp, sizeof(timestamp));
-	memcpy(tmp.points, points, sizeof(DataPoint)* count);
-	//printf("%d\n", tmp.N);
-	delete[] points;
-}
+vector<RawData*> whole_datas;
 
 void fan_data_process(const RawData &raw, const char *output_file, PointData &tmp)
 {
@@ -124,18 +54,13 @@ void fan_data_process(const RawData &raw, const char *output_file, PointData &tm
 	delete data;
 }
 
-vector<RawData *> whole_datas;
 void whole_data_process(const RawData &raw, bool from_zero, int collect_angle, const char *output_file, PointData& tmp)
 {
 	RawData *data = new RawData;
 	memcpy(data, &raw, sizeof(RawData));
 	whole_datas.push_back(data);
-
-	if ((from_zero && raw.angle == 0) || (!from_zero && raw.angle + raw.span == 1800+collect_angle * 10))
+	if ((from_zero && (raw.angle + raw.span) % 3600 == 0)|| (!from_zero && raw.angle + raw.span == 1800+collect_angle * 10))
 	{
-
-		//from_zero:true,A lap of data starts at 0 degrees
-		//from_zero:false,A lap of data starts at 180 degrees
 	}
 	else
 	{
@@ -147,15 +72,15 @@ void whole_data_process(const RawData &raw, bool from_zero, int collect_angle, c
 
 	for (std::vector<RawData *>::iterator it = whole_datas.begin(); it != whole_datas.end(); ++it)
 	{
-		data = *it;
+		RawData* tmp = *it;
 		// accumulate point's angle and counts
-		angles += data->span;
-		count += data->N;
+		angles += tmp->span;
+		count += tmp->N;
 		// record first point timestamp
 		if (bfirst)
 		{
-			timestamp[0] = data->ts[0];
-			timestamp[1] = data->ts[1];
+			timestamp[0] = tmp->ts[0];
+			timestamp[1] = tmp->ts[1];
 			bfirst = false;
 		}
 		// record fan counts
@@ -168,8 +93,8 @@ void whole_data_process(const RawData &raw, bool from_zero, int collect_angle, c
 		DEBUG_PR("angle sum %d, drop %d fans %d points\n", angles, n, count);
 		for (std::vector<RawData *>::iterator it = whole_datas.begin(); it != whole_datas.end(); ++it)
 		{
-			data = *it;
-			delete data;
+			RawData* tmp = *it;
+			delete tmp;
 		}
 		whole_datas.clear();
 	}
@@ -178,15 +103,14 @@ void whole_data_process(const RawData &raw, bool from_zero, int collect_angle, c
 	count = 0;
 	for (std::vector<RawData *>::iterator it = whole_datas.begin(); it != whole_datas.end(); ++it)
 	{
-		data = *it;
-		for (int i = 0; i < data->N; i++)
+		RawData* tmp = *it;
+		for (int i = 0; i < tmp->N; i++)
 		{
-			points[count++] = data->points[i];
+			points[count++] = tmp->points[i];
 		}
-		delete data;
+		delete tmp;
 	}
 	whole_datas.clear();
-
 	tmp.N = count;
 	memcpy(tmp.ts, timestamp, sizeof(uint32_t) * 2);
 	memcpy(tmp.points, points, sizeof(DataPoint) * count);
