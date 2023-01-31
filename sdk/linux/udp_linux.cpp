@@ -543,7 +543,7 @@ void *lidar_thread_proc_udp(void *param)
 		fd_set fds;
 		FD_ZERO(&fds);
 		FD_SET(cfg->fd, &fds);
-		struct timeval to = {1, 1};
+		struct timeval to = {1, 0};
 		int ret = select(cfg->fd + 1, &fds, NULL, NULL, &to);
 		if (cfg->is_group_listener != 1)
 		{
