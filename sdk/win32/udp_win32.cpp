@@ -12,6 +12,7 @@ send_cmd_udp_ptr CallBack_Udp;
 
 bool setup_lidar(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, int should_post,char* version)
 {
+	
 	char buf[32];
 	int nr = 0;
 	//初始化默认开始旋转
@@ -25,11 +26,12 @@ bool setup_lidar(int fd_udp, const char* ip, int port, int unit_is_mm, int with_
 		memcpy(version, buf, 12);
 		printf("set LiDAR LXVERH  OK %s\n", version);
 	}
+
 	//查询当前雷达配置信息，如果不同则修改
 	EEpromV101* eepromv101 = new EEpromV101;
 	memset(eepromv101, 0, sizeof(EEpromV101));
 	char result[3] = { 0 };
-	if (!udp_talk_GS_PACK(fd_udp, ip, port, 6, "LUUIDH", eepromv101))
+	if (!udp_talk_GS_PACK(fd_udp, ip, port, 6, "xxxxxx", eepromv101))
 	{
 		DEBUG_PR("GetDevInfo_MSG failed\n");
 		return false;
@@ -541,7 +543,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 		fd_set fds;
 		FD_ZERO(&fds);
 		FD_SET(cfg->fd, &fds);
-		struct timeval to = { 10, 1 };
+		struct timeval to = { 1, 0 };
 		if (cfg->is_group_listener != 1)
 		{			
 			int ret = select(cfg->fd + 1, &fds, NULL, NULL, &to);
@@ -568,12 +570,12 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 				tto = tv.tv_sec + 1;
 			}
 
-			if (ret == 0)
-			{
-				//当雷达没有向指定主机传输数据时，使雷达发送数据，其他控制指令可以达到同样的效果，仅兼容老版本使用
-				send_cmd_udp(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 0x0043, rand(), 6, "LGCPSH");
-				continue;
-			}
+			//if (ret == 0)
+			//{
+			//	//当雷达没有向指定主机传输数据时，使雷达发送数据，其他控制指令可以达到同样的效果，仅兼容老版本使用
+			//	//send_cmd_udp(cfg->fd, cfg->lidar_ip, cfg->lidar_port, 0x0043, rand(), 6, "LGCPSH");
+			//	//continue;
+			//}
 
 			if (ret < 0)
 			{
@@ -740,6 +742,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 				{
 					DEBUG_PR("threadson post message failed,errno:%d\n", ::GetLastError());
 				}
+				printf("%s\n", cmd);
 				delete []cmd;
 				break;
 			}
