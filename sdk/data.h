@@ -128,11 +128,11 @@ typedef void (*send_cmd_udp_ptr)(int fd_udp, const char* dev_ip, int dev_port, i
 
 //CN：心跳检测包 EN：Heartbeat detection package
 struct KeepAlive {
-	uint32_t world_clock;//CN:时间戳  EN:timestamp
-	uint32_t mcu_hz;
-	uint32_t arrive;
-	uint32_t delay;//延时
-	uint32_t reserved[4];
+	uint32_t world_clock;//时间戳
+	uint32_t mcu_hz;//mcu频率(内部使用)
+	uint32_t arrive;//包数据主机到雷达的时间(内部使用)
+	uint32_t delay;//延迟(内部使用)
+	uint32_t reserved[4];//预留位
 };
 struct DataPoint
 {
