@@ -144,9 +144,7 @@ static int GetFanPointCount(FanSegment* seg)
 	return n;
 }
 
-FanSegment* g_fan_segs = NULL;
-
-static bool GetData0xC7(const RawDataHdr7& hdr, uint8_t* pdat, bool with_chk, RawData& dat)
+static bool GetData0xC7(const RawDataHdr7& hdr, uint8_t* pdat, bool with_chk, RawData& dat, FanSegment** last_fan_seg)
 {
 	bool got = false;
 
@@ -154,22 +152,19 @@ static bool GetData0xC7(const RawDataHdr7& hdr, uint8_t* pdat, bool with_chk, Ra
 	if (!fan_seg) {
 		return NULL;
 	}
-
-	//printf("fan %d %d\n", fan_seg->hdr.beg_ang, fan_seg->hdr.ofset);
-
-	if (g_fan_segs != NULL)
+	if (*last_fan_seg!=NULL)
 	{
-		FanSegment* seg = g_fan_segs;
+		FanSegment* seg = (*last_fan_seg);
 
 		if (seg->hdr.timestamp != fan_seg->hdr.timestamp)
 		{
 			printf("drop old fan segments\n");
 			while (seg) {
-				g_fan_segs = seg->next;
+				(*last_fan_seg) = seg->next;
 				delete seg;
-				seg = g_fan_segs;
+				seg = (*last_fan_seg);
 			}
-			g_fan_segs = fan_seg;
+			(*last_fan_seg) = fan_seg;
 		}
 		else {
 			while (seg) {
@@ -188,18 +183,17 @@ static bool GetData0xC7(const RawDataHdr7& hdr, uint8_t* pdat, bool with_chk, Ra
 		}
 	}
 
-	if (g_fan_segs == NULL && fan_seg != NULL)
+	if (*last_fan_seg==NULL&& fan_seg != NULL)
 	{
-		g_fan_segs = fan_seg;
+		*last_fan_seg = fan_seg;
+		//printf("bag1 data :%d  time:%ld\n", (*last_fan_seg)->hdr.N, (*last_fan_seg)->hdr.timestamp);
 	}
 
-	// if (parser->fan_segs == NULL) { return NULL; }
+	int N = GetFanPointCount((*last_fan_seg));
 
-	int N = GetFanPointCount(g_fan_segs);
-
-	if (N >= g_fan_segs->hdr.whole_fan)
+	if (N >= (*last_fan_seg)->hdr.whole_fan)
 	{
-		if (N == g_fan_segs->hdr.whole_fan)
+		if (N == (*last_fan_seg)->hdr.whole_fan)
 		{
 			if (N > sizeof(dat.points) / sizeof(dat.points[0]))
 			{
@@ -207,17 +201,17 @@ static bool GetData0xC7(const RawDataHdr7& hdr, uint8_t* pdat, bool with_chk, Ra
 			}
 			else
 			{
-				PackFanData(g_fan_segs, dat);
+				PackFanData((*last_fan_seg), dat);
 				got = true;
 			}
 		}
 
-		// remove segments
-		FanSegment* seg = g_fan_segs;
+		// remove segments	
+		FanSegment* seg = (*last_fan_seg);
 		while (seg) {
-			g_fan_segs = seg->next;
+			(*last_fan_seg) = seg->next;
 			delete seg;
-			seg = g_fan_segs;
+			seg = (*last_fan_seg);
 		}
 	}
 	return got;
@@ -471,12 +465,13 @@ bool GetData0x99(const RawDataHdr99& hdr, unsigned char* pdat, int with_chk, Raw
 //		}
 //	}
 //}
-int pack_format = 0xce;
+
 
 int parse_data_x(int len, unsigned char* buf, 
 	int& span, int& is_mm, int& with_conf, 
-	RawData& dat, int& consume, int with_chk, LidarMsgHdr &zone)
+	RawData& dat, int& consume, int with_chk, LidarMsgHdr &zone, FanSegment**fan_segs)
 {
+	int pack_format = 0xce;
 	int idx = 0;
 	while (idx < len-18)
 	{
@@ -584,7 +579,7 @@ int parse_data_x(int len, unsigned char* buf,
 			RawDataHdr7 hdr7;
 			memcpy(&hdr7, buf + idx, HDR7_SIZE);
 
-			got = GetData0xC7(hdr7, buf + idx, with_chk, dat);
+			got = GetData0xC7(hdr7, buf + idx, with_chk, dat, fan_segs);
 
 			consume = idx + HDR7_SIZE + 5 * hdr.N + 2;
 		}
@@ -614,6 +609,7 @@ bool parse_data(int len, unsigned char* buf,
 	RawData& dat, int& consume, int with_chk) 
 {
 	int idx = 0;
+	int pack_format = 0xce;
 	while (idx < len-180)
 	{
 		if (buf[idx] == 'S' && buf[idx+1] == 'T' && buf[idx+6] == 'E' && buf[idx+7] == 'D')

@@ -439,13 +439,14 @@ bool parse_data(int len, unsigned char* buf,
 				  7.consume[int,OUT]			CN:解析处理的数据长度				EN:Parsing data length
 				  8.with_chk[int,IN]			CN:数据校验标志位					EN:data check flag
 				  9.zone[LidarMsgHdr,IN]		CN:报警信息数据						EN:Alarm information data
+				  10.last_fan_seg[FanSegment,IN]CN:分包扇区数据						EN:Subcontracting sector data
 
 * @return:        int    0 false  1 point cloud data  2.Alarm data  3.Clock synchronization data
 * @others:        Null
 *************************************************/
 int parse_data_x(int len, unsigned char* buf, 
 	int& span, int& is_mm, int& with_conf, 
-	RawData& dat, int& consume, int with_chk, LidarMsgHdr& zone);
+	RawData& dat, int& consume, int with_chk, LidarMsgHdr& zone, FanSegment** last_fan_seg);
 
 
 /************************************************
