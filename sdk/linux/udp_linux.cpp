@@ -500,7 +500,8 @@ void *lidar_thread_proc_udp(void *param)
 	int zoneSN = rand();
 	CallBack_Udp = send_cmd_udp;
 	ZoneAlarm *zonealarm = new ZoneAlarm(cfg->fd, true, cfg->lidar_ip, cfg->lidar_port, (void *)CallBack_Udp);
-
+    FanSegment**fan_segs=new FanSegment*;
+	*fan_segs = NULL;
 	if (cfg->is_group_listener == 1)
 	{
 		ip_mreq group;
@@ -648,7 +649,7 @@ void *lidar_thread_proc_udp(void *param)
 						// printf("%.02x %.02x %.02x %.02x\n ",buf[0],buf[1],buf[2],buf[3]);
 						is_pack = parse_data_x(len, buf,
 											   fan_span, cfg->unit_is_mm, cfg->with_confidence,
-											   dat, consume, cfg->with_chk, zone);
+											   dat, consume, cfg->with_chk, zone,fan_segs);
 					}
 					else
 					{

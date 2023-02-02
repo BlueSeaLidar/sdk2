@@ -645,6 +645,8 @@ void *lidar_thread_proc_uart(void *param)
 	int zoneFlag = 0; //读写防区标志位    0为正常运行  1为读  2为写
 	int zoneSN = rand();
 	CallBack_Uart = send_cmd_uart;
+    FanSegment**fan_segs=new FanSegment*;
+	*fan_segs = NULL;
 	ZoneAlarm *zonealarm = new ZoneAlarm(cfg->fd, false, (void *)CallBack_Uart);
 	if (strcmp(cfg->type, "uart") == 0)
 		setup_lidar(cfg->fd, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
@@ -747,7 +749,7 @@ void *lidar_thread_proc_uart(void *param)
 				{
 					is_pack = parse_data_x(buf_len, buf,
 										   fan_span, cfg->unit_is_mm, cfg->with_confidence,
-										   dat, consume, cfg->with_chk, zone);
+										   dat, consume, cfg->with_chk, zone,fan_segs);
 					//printf("%d %s %d\n", __LINE__, __FUNCTION__, is_pack);
 				}
 				else
