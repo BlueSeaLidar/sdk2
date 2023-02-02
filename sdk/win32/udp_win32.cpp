@@ -509,6 +509,8 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 	gettimeofday(&tv, NULL);
 	time_t tto = tv.tv_sec + 1;
 	uint32_t delay = 0;
+	FanSegment**fan_segs=new FanSegment*;
+	*fan_segs = NULL;
 	//ws2_32库会导致setsockopt失败，这里使用wsock32库
 	//设置组播模式
 	if (cfg->is_group_listener == 1)
@@ -636,10 +638,9 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 					int consume;
 					if (cfg->data_bytes==3)
 					{
-						//printf("%.02x %.02x %.02x %.02x\n ", buf[0], buf[1], buf[2], buf[3]);
 						is_pack = parse_data_x(len, buf,
 							fan_span, cfg->unit_is_mm, cfg->with_confidence,
-							dat, consume, cfg->with_chk, zone);
+							dat, consume, cfg->with_chk, zone, fan_segs);
 
 					}
 					else

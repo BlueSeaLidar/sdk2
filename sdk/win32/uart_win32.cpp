@@ -570,6 +570,8 @@ DWORD  WINAPI  lidar_thread_proc_uart(void*  param)
 	PointData tmp;//临时存储结构体变量
 	 //默认启动雷达
 	DWORD dwWritenSize = 0;
+	FanSegment** fan_segs = new FanSegment*;
+	*fan_segs = NULL;
 	if(strcmp(cfg->type, "uart") == 0)
 		setup_lidar((void*)cfg->fd, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
 	else
@@ -641,7 +643,7 @@ DWORD  WINAPI  lidar_thread_proc_uart(void*  param)
 				{
 					is_pack = parse_data_x(buf_len, buf,
 						fan_span, cfg->unit_is_mm, cfg->with_confidence,
-						dat, consume, cfg->with_chk, zone);
+						dat, consume, cfg->with_chk, zone,fan_segs);
 				}
 				else
 				{
