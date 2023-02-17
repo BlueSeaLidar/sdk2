@@ -11,7 +11,7 @@ class LidarWebService
 public:
 	LidarWebService(int port);
 	~LidarWebService();
-	void  OpenLocalService();
+	void  OpenLocalService(int index);
 	void  CloseLocalService();
 
 private:

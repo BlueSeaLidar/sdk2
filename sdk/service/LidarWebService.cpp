@@ -4,29 +4,30 @@
 #include "standard_interface.h"
 static const char *s_debug_level = "2";
 static const char *s_root_dir = "web";
-static const char *s_enable_hexdump = "no";
+static const char *s_enable_hexdump = "no"; 
 static const char *s_ssi_pattern = "*";
 mg_connection *g_c;
 LidarCheckService *g_checkservice;
 LidarWebService::LidarWebService(int port)
 {
 	m_port = port;
-	g_checkservice = new LidarCheckService(CHECKSERVICE);
+	g_checkservice= new LidarCheckService(CHECKSERVICE);
 }
 
 LidarWebService::~LidarWebService()
 {
-	delete g_checkservice;
+	delete []g_checkservice;
 }
 
-void LidarWebService::OpenLocalService()
+void LidarWebService::OpenLocalService(int index)
 {
 	char address[64] = {0};
 	sprintf(address, "http://0.0.0.0:%d", m_port);
 	struct mg_mgr mgr;						 // Event manager
 	mg_log_set("2");						 // Set to 3 to enable debug
 	mg_mgr_init(&mgr);						 // Initialise event manager
-	mg_http_listen(&mgr, address, fn, NULL); // Create HTTP listener
+
+	mg_http_listen(&mgr, address, fn, &index); // Create HTTP listener
 	for (;;)
 		mg_mgr_poll(&mgr, 50); // Infinite event loop
 	mg_mgr_free(&mgr);
@@ -214,7 +215,7 @@ void DevDataToStr(DevData *devdata, int index, char *value)
 }
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 {
-
+	int* cfg_index = (int*)fn_data;
 	if (ev == MG_EV_HTTP_MSG)
 	{
 		struct mg_http_message *hm = (struct mg_http_message *)ev_data;
@@ -254,7 +255,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 		{
 			cJSON *arr = cJSON_CreateArray();
 			cJSON *point = cJSON_CreateObject();
-			cJSON *item = cJSON_CreateString(g_cfg->type);
+			cJSON *item = cJSON_CreateString(g_cfg[*cfg_index]->type);
 			cJSON_AddItemToObject(point, "type", item);
 			std::string SYSType;
 #ifdef _WIN32
@@ -288,7 +289,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 			}
 			char cmd[7] = {0};
 			sprintf(cmd, "%s", ret + 4);
-			ControlDrv(g_cfg->thread_ID[1], cmd);
+			ControlDrv(g_cfg[*cfg_index]->thread_ID[1], cmd);
 			char *out = jsonValue("SUCCESS", "", NULL);
 			mg_http_reply(c, 200, "", "%s", out);
 			free(out);
@@ -297,9 +298,9 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 		//雷达点云数据/报警信息
 		else if (mg_http_match_uri(hm, "/data"))
 		{
-			g_cfg->output_scan = true;
+			g_cfg[*cfg_index]->output_scan = true;
 			PointData tmp;
-			memcpy(&tmp, &g_cfg->pointdata, sizeof(PointData));
+			memcpy(&tmp, &g_cfg[*cfg_index]->pointdata, sizeof(PointData));
 			if (tmp.N <= 0 || tmp.N > 10000)
 			{
 				char message[64] = { 0 };
@@ -314,7 +315,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 			cJSON *point;
 			cJSON *item = cJSON_CreateNumber(tmp.N);
 			cJSON_AddItemToObject(root, "N", item);
-			if (strcmp(g_cfg->type, "uart") == 0 || strcmp(g_cfg->type, "vpc") == 0)
+			if (strcmp(g_cfg[*cfg_index]->type, "uart") == 0 || strcmp(g_cfg[*cfg_index]->type, "vpc") == 0)
 			{
 				const int emptyarr[2] = {0, 0};
 				item = cJSON_CreateIntArray(emptyarr, 2);
@@ -341,7 +342,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 
 			//添加防区相关的数据
 			LidarMsgHdr zone;
-			memcpy(&zone, &g_cfg->zone, sizeof(LidarMsgHdr));
+			memcpy(&zone, &g_cfg[*cfg_index]->zone, sizeof(LidarMsgHdr));
 
 			item = cJSON_CreateNumber(zone.flags);
 			cJSON_AddItemToObject(root, "zone_flag", item);
@@ -359,19 +360,19 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 		else if (mg_http_match_uri(hm, "/getDevinfo"))
 		{
 			EEpromV101 eepromv101;
-			GetDevInfo(g_cfg->thread_ID[1], eepromv101);
+			GetDevInfo(g_cfg[*cfg_index]->thread_ID[1], eepromv101);
 			char info[1024] = {0};
-			EEpromV101ToStr(&eepromv101, g_cfg->version, info);
+			EEpromV101ToStr(&eepromv101, g_cfg[*cfg_index]->version, info); 
 			mg_http_reply(c, 200, "", "%s", info);
 			return;
 		}
-		//设置雷达设备参数
+		//设置雷达设备参数 
 		else if (mg_http_match_uri(hm, "/setDevinfo"))
 		{
-			memset(&g_cfg->pointdata, 0, sizeof(PointData));
-			memset(&g_cfg->zone, 0, sizeof(LidarMsgHdr));
+			memset(&g_cfg[*cfg_index]->pointdata, 0, sizeof(PointData));
+			memset(&g_cfg[*cfg_index]->zone, 0, sizeof(LidarMsgHdr));
 
-			if (strcmp(g_cfg->type, "uart") == 0)
+			if (strcmp(g_cfg[*cfg_index]->type, "uart") == 0)
 			{
 				char *out = jsonValue("ERROR", "uart is not support this function!", NULL);
 				mg_http_reply(c, 200, "", "%s", out);
@@ -407,7 +408,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 			DevData tmpData;
 			memset(&tmpData, 0, sizeof(DevData));
 			DevDataToStr(&tmpData, index, (char *)value.c_str());
-			SetDevInfo_extre(g_cfg->thread_ID[1], tmpData);
+			SetDevInfo_extre(g_cfg[*cfg_index]->thread_ID[1], tmpData);
 			char buf[3] = {0};
 			memcpy(buf, tmpData.result + 2 * index, 2);
 			char *out = jsonValue("SUCCESS", buf, NULL);
@@ -518,7 +519,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 			RecvZoneDatas results;
 			cJSON *items = cJSON_CreateObject();
 			char *out;
-			if (GetAlarmZone(g_cfg->thread_ID[1], results))
+			if (GetAlarmZone(g_cfg[*cfg_index]->thread_ID[1], results))
 			{
 				out = jsonValue("ERROR", "get zone failed!", items);
 				mg_http_reply(c, 200, "", "%s", out);
@@ -576,7 +577,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 			}
 			cJSON *item = cJSON_CreateArray();
 			char *out;
-			if (SetAlarmZone(g_cfg->thread_ID[1], results))
+			if (SetAlarmZone(g_cfg[*cfg_index]->thread_ID[1], results))
 			{
 				out = jsonValue("ERROR", "arg is not current!", item);
 			}

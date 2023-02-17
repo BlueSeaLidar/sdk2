@@ -2,18 +2,17 @@
 #define __STANDARD_INTERFACE_H__
 
 #include"ZoneAlarm.h"
+#include"LidarDataProcess.h"
 #include"error.h"
 #ifdef _WIN32
-#include"win32\uart_win32.h"
-#include"win32\udp_win32.h"
+
 #elif __unix__ 
-#include"./linux/udp_linux.h"
-#include"./linux/uart_linux.h"
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #endif
 
-#define SDKVERSION   "1.2"  //SDK版本号
+#define SDKVERSION   "2.0"  //SDK版本号
+
 /************************************************
 * @functionName:  read_config
 * @date:          2022-03-28
@@ -38,7 +37,7 @@ bool read_config(const char* cfg_file_name, RunConfig& cfg);
 * @return:        socket句柄或者文件句柄
 * @others:        Null
 *************************************************/
-int openDev(RunConfig& cfg);
+int openDev(RunConfig& cfg, int index);
 /************************************************
 * @functionName:  thread_set_run
 * @date:          2022-05-05
@@ -158,12 +157,12 @@ int ZoneSection(long threadID,int section,int mode);
 
 
 //打开本地服务(web测试可视化页面)
-void  OpenLocalService(RunConfig& cfg);
+void  OpenLocalService(RunConfig& cfg, int index);
 //关闭本地服务
 void  CloseLocalService();
 
 int GetOnePoint_MSG(long threadID, PointData& data);
-extern RunConfig* g_cfg;
+extern RunConfig *g_cfg[MAX_LIDARS];
 
 
 #endif

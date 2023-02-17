@@ -1,5 +1,5 @@
 ﻿#include"ZoneAlarm.h"
-
+#include"Global.h"
 ZoneAlarm::ZoneAlarm(int fd, bool isUDP, void* ptr)
 {
 	m_fd = fd;
@@ -132,7 +132,7 @@ int ZoneAlarm::getZoneRev(unsigned char* buf,int sn)
 	if (hdr->sign != 0x484c || cmdr != ZG_PACK)
 		return 0;
 
-	unsigned int crc = stm32crc((unsigned int*)buf, hdr->len / 4 + 2);
+	unsigned int crc = BaseAPI::stm32crc((unsigned int*)buf, hdr->len / 4 + 2);
 	unsigned int* pcrc = (unsigned int*)(buf + sizeof(CmdHeader) + hdr->len);
 	if (crc != *pcrc)
 		return 0;
@@ -355,7 +355,7 @@ bool ZoneAlarm::PackAll()
 		return false;
 	}
 
-	uint32_t crc = stm32crc((uint32_t*)(m_recvBuf->buf), m_recvBuf->total / 4);
+	uint32_t crc = BaseAPI::stm32crc((uint32_t*)(m_recvBuf->buf), m_recvBuf->total / 4);
 	if (crc != m_recvBuf->crc)
 	{
 		printf("zone crc %x != %x", crc, m_recvBuf->crc);
@@ -371,7 +371,7 @@ bool ZoneAlarm::PackAll()
 		return false;
 	}
 
-	crc = stm32crc((uint32_t*)(m_recvBuf->buf + 16), (m_recvBuf->total - 16) / 4);
+	crc = BaseAPI::stm32crc((uint32_t*)(m_recvBuf->buf + 16), (m_recvBuf->total - 16) / 4);
 	if (crc != m_zoneDef->hdr.crc)
 	{
 		printf("crc %x != %x", crc, m_zoneDef->hdr.crc);
@@ -469,7 +469,7 @@ int ZoneAlarm::setZone(zones& data,int sn)
 	}
 
 	uint32_t* buf1 = (uint32_t*)m_zoneDef;
-	m_zoneDef->hdr.crc = stm32crc(buf1 + 4, (sz - 16) / 4);
+	m_zoneDef->hdr.crc = BaseAPI::stm32crc(buf1 + 4, (sz - 16) / 4);
 
 	//FILE* fp = fopen("2.txt", "w");
 	//if (fp)
@@ -483,7 +483,7 @@ int ZoneAlarm::setZone(zones& data,int sn)
 	m_transBuf = new TransBuf;
 	memcpy(m_transBuf->buf, m_zoneDef, sz);
 	m_transBuf->total = sz;
-	m_transBuf->crc = stm32crc((uint32_t*)(m_transBuf->buf), sz / 4);
+	m_transBuf->crc = BaseAPI::stm32crc((uint32_t*)(m_transBuf->buf), sz / 4);
 	memset(m_transBuf->filled, 0, sizeof(m_transBuf->filled));
 	SendZoneWrite(OP_ZONE_ERASE, 0, sn);
 	return 0;
@@ -506,7 +506,7 @@ int ZoneAlarm::setZoneRev(unsigned char* buf,int cmd_len, int sn,int &consume)
 	ZoneWriteResp resp;
 	while (idx < cmd_len - 152)
 	{
-		if (buf[idx] == 0x4C && buf[idx + 1] == 0x48 && buf[idx + 2] == 0xAC && buf[idx + 3] == 0XA5)
+		if (buf[idx] == 0x4C && buf[idx + 1] == 0x48 && buf[idx + 2] == 0xAC && buf[idx + 3] == 0XA5) 
 		{
 			CmdHeader* hdr = (CmdHeader*)(buf + idx);
 			if (hdr->sign != 0x484c)
@@ -565,7 +565,7 @@ int ZoneAlarm::setZoneRev(unsigned char* buf, int sn)
 	if (hdr->sign != 0x484c || cmdr != ZS_PACK)
 		return 0;
 
-	unsigned int crc = stm32crc((unsigned int*)buf, hdr->len / 4 + 2);
+	unsigned int crc = BaseAPI::stm32crc((unsigned int*)buf, hdr->len / 4 + 2);
 	unsigned int* pcrc = (unsigned int*)(buf + sizeof(CmdHeader) + hdr->len);
 	if (crc != *pcrc)
 		return 0;

@@ -27,14 +27,18 @@ project(bluesea)
 set(CMAKE_CXX_STANDARD 98)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED True)
+IF (UNIX)
+# 添加对gdb的支持
+SET(CMAKE_BUILD_TYPE "Debug")
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
-
+ELSEIF (WIN32)
 #多线程
 set(CMAKE_CXX_FLAGS_DEBUG "/MT")
 #强制文件输出
 set(CMAKE_EXE_LINKER_FLAGS_DEBUG       "/FORCE")
-#set(CMAKE_CXX_FLAGS_RELEASE "/MT")
-#set(CMAKE_EXE_LINKER_FLAGS_RELEASE       "/FORCE")
+ENDIF ()
 #指定生成debug模式
 set(CMAKE_CONFIGURATION_TYPES Debug)
 #所有的头文件目录
@@ -48,11 +52,11 @@ file(GLOB_RECURSE HEADER_FILES  ${PROJECT_SOURCE_DIR}/sdk/*.h  ${PROJECT_SOURCE_
 
 IF (UNIX)
   #加载指定目录下需要删除的指定格式文件集
-  file(GLOB_RECURSE REMOVE_SOURCES  "${PROJECT_SOURCE_DIR}/sdk/win32/*" "${PROJECT_SOURCE_DIR}/sdk/service/LidarCheckService_win32.cpp" "${PROJECT_SOURCE_DIR}/sdk/service/ZoneAlarm_win32.cpp" "${PROJECT_SOURCE_DIR}/sdk/standard_interface_win32.cpp")
-  file(GLOB_RECURSE REMOVE_HEADERS  "${PROJECT_SOURCE_DIR}/sdk/win32/*")
+  file(GLOB_RECURSE REMOVE_SOURCES  "${PROJECT_SOURCE_DIR}/sdk/service/LidarCheckService_win32.cpp" "${PROJECT_SOURCE_DIR}/sdk/service/ZoneAlarm_win32.cpp" "${PROJECT_SOURCE_DIR}/sdk/standard_interface_win32.cpp")
+  #file(GLOB_RECURSE REMOVE_HEADERS  "${PROJECT_SOURCE_DIR}/sdk/win32/*")
   #获取最终编译需要的文件集
   list(REMOVE_ITEM SOURCE_FILES ${REMOVE_SOURCES})
-  list(REMOVE_ITEM HEADER_FILES ${REMOVE_HEADERS})
+  #list(REMOVE_ITEM HEADER_FILES ${REMOVE_HEADERS})
   
   source_group("Include" FILES ${HEADER_FILES})
   #编译生成可执行文件demo
@@ -61,11 +65,11 @@ IF (UNIX)
   target_link_libraries(demo m pthread )
 ELSEIF (WIN32)
   #同上
-  file(GLOB_RECURSE REMOVE_SOURCES  "${PROJECT_SOURCE_DIR}/sdk/linux/*" "${PROJECT_SOURCE_DIR}/sdk/service/LidarCheckService_linux.cpp" "${PROJECT_SOURCE_DIR}/sdk/service/ZoneAlarm_linux.cpp" "${PROJECT_SOURCE_DIR}/sdk/standard_interface_linux.cpp")
-  file(GLOB_RECURSE REMOVE_HEADERS  "${PROJECT_SOURCE_DIR}/sdk/linux/*")
+  file(GLOB_RECURSE REMOVE_SOURCES  "${PROJECT_SOURCE_DIR}/sdk/service/LidarCheckService_linux.cpp" "${PROJECT_SOURCE_DIR}/sdk/service/ZoneAlarm_linux.cpp" "${PROJECT_SOURCE_DIR}/sdk/standard_interface_linux.cpp" "${PROJECT_SOURCE_DIR}/sdk/uart.c")
+  #file(GLOB_RECURSE REMOVE_HEADERS  "${PROJECT_SOURCE_DIR}/sdk/linux/*")
   
   list(REMOVE_ITEM SOURCE_FILES ${REMOVE_SOURCES})
-  list(REMOVE_ITEM HEADER_FILES ${REMOVE_HEADERS})
+  #list(REMOVE_ITEM HEADER_FILES ${REMOVE_HEADERS})
   
   source_group("Include" FILES ${HEADER_FILES})
   my_add_executable(demo ${SOURCE_FILES} ${HEADER_FILES})

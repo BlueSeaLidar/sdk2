@@ -15,6 +15,8 @@
 #include "../sdk/standard_interface.h"
 
 
+
+
 //传入回调指针的方式打印
 void CallBackMsg(int msgtype, void* param)
 {
@@ -24,7 +26,7 @@ void CallBackMsg(int msgtype, void* param)
 		PointData* pointdata = (PointData*)param;
 		for (int i = 0; i < pointdata->N; i++)
 		{
-			//INFO_PR("%.5f\t%.3f\t%d\n", pointdata->points[i].angle, pointdata->points[i].distance, pointdata->points[i].confidence);
+			//INFO_PR("%s\t%d \t %d\t%.5f\t%.3f\t%d\n", pointdata->ip,pointdata->port, pointdata->N,pointdata->points[i].angle, pointdata->points[i].distance, pointdata->points[i].confidence);
 		}
 	}
 	//实时防区数据返回
@@ -174,49 +176,50 @@ int main(int argc, char **argv)
 	/*
 	 * 1,params init
 	 */
-	if (argc != 2 && argc != 15)
+	if (argc < 2)
 	{
-		DEBUG_PR("Incorrect number of parameters  %d\n usage : ./demo  ../../config/xxx.txt  or  ./demo    arg1 arg2  ..\n", argc);
+		DEBUG_PR("Incorrect number of parameters  %d\n usage : ./demo  ../../config/xxx.txt   At least one txt of Lidar\n", argc);
 		return ARG_ERROR_NUM;
 	}
-	RunConfig cfg;
-	memset(&cfg, 0, sizeof(RunConfig));
-	//传入打印函数指针
-	cfg.callback = CallBackMsg;
-	if (argc == 2)
+	int lidar_sum = argc - 1;
+	RunConfig cfg[MAX_LIDARS];
+	for (int i = 0; i <lidar_sum; i++)
 	{
-		const char *cfg_file_name = argv[1];
-		if (!read_config(cfg_file_name, cfg))
+		memset(&cfg[i], 0, sizeof(RunConfig));
+		//传入打印函数指针
+		cfg[i].callback = CallBackMsg;
+		const char* cfg_file_name = argv[i+1];
+		if (!read_config(cfg_file_name, cfg[i]))
 		{
 			DEBUG_PR("config file is not exist:%s\n", cfg_file_name);
 			return ARG_ERROR_FILE_EXIST;
 		}
-	}
-	//启动雷达设备 返回值非0表示失败  0表示可以正常接收包数据
-	int res = openDev(cfg);
 
-	if (res != 0)
-	{
-		return res;
-	}
-	//启动web本地服务，SDK单独集成则不需要
-	if (cfg.is_open_service)
-		OpenLocalService(cfg);
-	printf("Please control it through a browser and enter the default address: http://localhost:8888\n");
-	//切换防区(仅防区款)   0 success    !=0 false   
-	//if (ZoneSection(cfg.thread_ID[1], 1, 1))
-	//{
-	//	printf("Failed to switch the specified zone!\n");
-	//}
-	getLidarData(cfg.thread_ID[1], true);
-	EEpromV101 data;
-	if (GetDevInfo(cfg.thread_ID[1], data) == 0)
-	{
-		 PrintMsg(2, &data);
+		//启动雷达设备 返回值非0表示失败  0表示可以正常接收包数据
+		int res = openDev(cfg[i],i);
+		if (res != 0)
+		{
+			return res;
+		}
+		//启动web本地服务，SDK单独集成则不需要
+		if (cfg[i].is_open_service)
+			OpenLocalService(cfg[i],i);
+		printf("Please control it through a browser and enter the default address: http://localhost: %d\n", cfg[i].service_port);
+		//切换防区(仅防区款)   0 success    !=0 false   
+		//if (ZoneSection(cfg.thread_ID[1], 1, 1))
+		//{
+		//	printf("Failed to switch the specified zone!\n");
+		//}
+		getLidarData(cfg[i].thread_ID[1], true);
+		EEpromV101 data;
+		if (GetDevInfo(cfg[i].thread_ID[1], data) == 0)
+		{
+			PrintMsg(2, &data);
+		}	
 	}
 	while (1)
 	{
-		
+
 	}
 	//以下为调用接口样例
 	//while (1)

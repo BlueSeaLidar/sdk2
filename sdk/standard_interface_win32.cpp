@@ -3,194 +3,13 @@
 
 #include "standard_interface.h"
 #include"service/LidarWebService.h"
-#include <fstream>
-#include <sstream>
-RunConfig* g_cfg;
+
+RunConfig *g_cfg[MAX_LIDARS];
 LidarWebService* webservice;
-//Configuration file description: If you get linux in windows format, there will be an exception, please convert to unix first
+
 bool read_config(const char* cfg_file_name, RunConfig& cfg)
 {
-	std::ifstream infile;
-	infile.open(cfg_file_name);
-	if (!infile.is_open())
-		return false;
-
-	std::string s,t;
-	std::string lidar_ip_s, lidar_port_s, local_port_s;
-	std::string unit_is_mm_s, with_confidence_s, resample_s;
-	std::string with_deshadow_s, with_smooth_s, with_chk_s;
-	std::string raw_bytes_s, rpm_s, output_scan_s, output_360_s;
-	std::string from_zero_s, collect_angle;
-	std::string output_file;
-	std::string is_group_listener;
-	std::string group_ip;
-	std::string type;
-	std::string baud_rate, port;
-	std::string service_port, is_open_service;
-	std::string alarm_msg;
-	while (getline(infile, s))
-	{
-		std::string tmp;
-		std::stringstream linestream(s);
-		getline(linestream, tmp, ':');
-
-		if (tmp == "type")
-		{
-			getline(linestream, type, ':');
-			strcpy(cfg.type, type.c_str());
-		}
-		if (tmp == "baud_rate")
-		{
-			getline(linestream, baud_rate, ':');
-			cfg.baud_rate = atoi(baud_rate.c_str());
-		}
-		if (tmp == "port")
-		{
-			getline(linestream, port, ':');
-			strcpy(cfg.port, port.c_str());
-		}
-		if (tmp == "lidar_ip")
-		{
-			getline(linestream, lidar_ip_s, ':');
-			strcpy(cfg.lidar_ip, lidar_ip_s.c_str());
-		}
-		else if (tmp == "lidar_port")
-		{
-			getline(linestream, lidar_port_s, ':');
-			cfg.lidar_port = atoi(lidar_port_s.c_str());
-		}
-		else if (tmp == "local_port")
-		{
-			getline(linestream, local_port_s, ':');
-			cfg.local_port = atoi(local_port_s.c_str());
-		}
-		else if (tmp == "with_confidence")
-		{
-			getline(linestream, with_confidence_s, ':');
-			cfg.with_confidence = atoi(with_confidence_s.c_str());
-		}
-		else if (tmp == "raw_bytes")
-		{
-			getline(linestream, raw_bytes_s, ':');
-			cfg.data_bytes = atoi(raw_bytes_s.c_str());
-		}
-		else if (tmp == "unit_is_mm")
-		{
-			getline(linestream, unit_is_mm_s, ':');
-			cfg.unit_is_mm = atoi(unit_is_mm_s.c_str());
-		}
-		else if (tmp == "with_chk")
-		{
-			getline(linestream, with_chk_s, ':');
-			cfg.with_chk = atoi(with_chk_s.c_str());
-		}
-		else if (tmp == "with_smooth")
-		{
-			getline(linestream, with_smooth_s, ':');
-			cfg.with_smooth = atoi(with_smooth_s.c_str());
-		}
-		else if (tmp == "with_deshadow")
-		{
-			getline(linestream, with_deshadow_s, ':');
-			cfg.with_deshadow = atoi(with_deshadow_s.c_str());
-		}
-		else if (tmp == "resample")
-		{
-			getline(linestream, resample_s, ':');
-			cfg.resample = atoi(resample_s.c_str());
-		}
-		else if (tmp == "rpm")
-		{
-			getline(linestream, rpm_s, ':');
-			cfg.rpm = atoi(rpm_s.c_str());
-		}
-		else if (tmp == "output_scan")
-		{
-			getline(linestream, output_scan_s, ':');
-			cfg.output_scan = atoi(output_scan_s.c_str());
-		}
-		else if (tmp == "output_360")
-		{
-			getline(linestream, output_360_s, ':');
-			cfg.output_360 = atoi(output_360_s.c_str());
-		}
-		else if (tmp == "from_zero")
-		{
-			getline(linestream, from_zero_s, ':');
-			cfg.from_zero = atoi(from_zero_s.c_str());
-		}
-		else if (tmp == "collect_angle")
-		{
-			getline(linestream, collect_angle, ':');
-			cfg.collect_angle = atoi(collect_angle.c_str());
-		}
-		else if (tmp == "output_file")
-		{
-			getline(linestream, output_file, ':');
-			strcpy(cfg.output_file, output_file.c_str());
-		}
-		else if (tmp == "is_group_listener")
-		{
-			getline(linestream, is_group_listener, ':');
-			cfg.is_group_listener = atoi(is_group_listener.c_str());
-		}
-		else if (tmp == "group_ip")
-		{
-			getline(linestream, group_ip, ':');
-			strcpy(cfg.group_ip, group_ip.c_str());
-		}
-		else if (tmp == "service_port")
-		{
-			getline(linestream, service_port, ':');
-			cfg.service_port = atoi(service_port.c_str());;
-		}
-		else if (tmp == "is_open_service")
-		{
-			getline(linestream, is_open_service, ':');
-			cfg.is_open_service = atoi(is_open_service.c_str());
-		}
-		else if (tmp == "alarm_msg")
-		{
-			getline(linestream, alarm_msg, ':');
-			cfg.alarm_msg = atoi(alarm_msg.c_str());
-		}
-		else if (tmp == "shadow_filter.enable")
-		{
-			getline(linestream, t, ':');
-			cfg.shadows_filter.enable = atoi(t.c_str());
-		}
-		else if (tmp == "shadow_filter.max_range")
-		{
-			getline(linestream, t, ':');
-			cfg.shadows_filter.max_range = atoi(t.c_str());
-		}
-		else if (tmp == "shadow_filter.min_angle")
-		{
-			getline(linestream, t, ':');
-			cfg.shadows_filter.min_angle = atoi(t.c_str());
-		}
-		else if (tmp == "shadow_filter.max_angle")
-		{
-			getline(linestream, t, ':');
-			cfg.shadows_filter.max_angle = atoi(t.c_str());
-		}
-		else if (tmp == "shadow_filter.window")
-		{
-			getline(linestream, t, ':');
-			cfg.shadows_filter.window = atoi(t.c_str());
-		}
-		else if (tmp == "median_filter.enable")
-		{
-			getline(linestream, t, ':');
-			cfg.median_filter.enable = atoi(t.c_str());
-		}
-		else if (tmp == "median_filter.window")
-		{
-			getline(linestream, t, ':');
-			cfg.median_filter.window = atoi(t.c_str());
-		}
-	}
-	return true;
+	return readConfig(cfg_file_name, cfg);
 }
 
 // 释放连接
@@ -240,15 +59,18 @@ int ZoneSection(long threadID, int section, int mode)
 }
 DWORD  WINAPI lidar_service(void* param)
 {
-	webservice->OpenLocalService();
+	int *index = (int*)param;
+	webservice->OpenLocalService(*index);
 	return SUCCESS;
 }
 //打开本地服务
-void  OpenLocalService(RunConfig& cfg)
+void  OpenLocalService(RunConfig& cfg,int index)
 {
 	webservice = new LidarWebService(cfg.service_port);
 	DWORD threadId;
-	CreateThread(NULL, 0, lidar_service, 0, 0, &threadId);
+	int* arg = new int;
+	*arg = index;
+	CreateThread(NULL, 0, lidar_service, arg, 0, &threadId);
 	cfg.thread_ID[2] = threadId;
 }
 //关闭本地服务
@@ -256,8 +78,9 @@ void  CloseLocalService()
 {
 
 }
+
 // 连接雷达，启动子线程
-int openDev(RunConfig& cfg)
+int openDev(RunConfig& cfg,int index)
 {
 	int fd = -1;//保存句柄变量
 	int res = -1;//保存函数返回值
@@ -297,7 +120,8 @@ int openDev(RunConfig& cfg)
 
 		cfg.thread_ID[0] = GetCurrentThreadId();
 		cfg.thread_ID[1] = threadId;
-		g_cfg = &cfg;
+		//memcpy(g_cfg[index],&cfg,sizeof(RunConfig));
+		g_cfg[index] = &cfg;
 		return SUCCESS;
 	}
 	else if (strcmp(cfg.type, "udp") == 0)
@@ -337,7 +161,8 @@ int openDev(RunConfig& cfg)
 		INFO_PR("Lidar is open success\n");
 		cfg.thread_ID[0] = GetCurrentThreadId();
 		cfg.thread_ID[1] = threadId;
-		g_cfg = &cfg;
+		g_cfg[index] = &cfg;
+		//memcpy(g_cfg[index], &cfg, sizeof(RunConfig));
 		return SUCCESS;
 
 	}
