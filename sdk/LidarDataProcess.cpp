@@ -483,7 +483,7 @@ void  send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port, int cmd, int sn
 			dev_ip, dev_port, cmd, sn, len, s);
 	}
 }
-#ifdef __WIN32__
+#ifdef _WIN32
 DWORD  WINAPI lidar_thread_proc_udp(void* param)
 {
 	//启动消息队列
