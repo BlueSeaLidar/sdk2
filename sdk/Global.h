@@ -7,6 +7,7 @@
 
 namespace BaseAPI {
     unsigned int stm32crc(unsigned int* ptr, unsigned int len);
+    bool checkAndMerge(int type, char* ip, char* mask, char* gateway, int port, char* result);
 }
 
 namespace ParseAPI {

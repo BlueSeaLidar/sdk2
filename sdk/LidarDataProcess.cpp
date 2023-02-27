@@ -497,8 +497,6 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 	CallBack_Udp = send_cmd_udp;
 	ZoneAlarm* zonealarm = new ZoneAlarm(cfg->fd, true, cfg->lidar_ip, cfg->lidar_port, CallBack_Udp);
 	PointData tmp;
-	strcpy(tmp.ip, cfg->lidar_ip);
-	tmp.port = cfg->lidar_port;
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	time_t tto = tv.tv_sec + 1;
@@ -648,7 +646,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 					{
 						//！！！CN:用户需要提取数据的操作，可以参考该函数,具体详细的其他打印操作参考user.cpp文件
 						//！！！EN:User needs to extract data operation, you can refer to this function，For details about other printing operations, please refer to the user.cpp file
-						//memset(&tmp, 0, sizeof(PointData));
+						memset(&tmp, 0, sizeof(PointData));
 						if (cfg->output_scan)
 						{
 							if (is_pack == 2)
@@ -674,6 +672,24 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 							}
 							if (tmp.N > 0)
 							{
+								bool isAllZero = true;
+								for (int i = 0; i < tmp.N; i++)
+								{
+									if (tmp.points[i].distance!= 0)
+									{
+										isAllZero = false;
+										break;
+									}
+								}
+								if (isAllZero)
+								{
+									((void(*)(int, void*))cfg->callback)(3, (char*)"The ridar distance of the current sector is all 0");
+									continue;
+								}
+
+
+								strcpy(tmp.ip, cfg->lidar_ip);
+								tmp.port = cfg->lidar_port;
 								((void(*)(int, void*))cfg->callback)(1, &tmp);
 								memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
 
@@ -1358,13 +1374,11 @@ DWORD  WINAPI lidar_thread_proc_uart(void* param)
 							memcpy(&cfg->zone, &zone, sizeof(LidarMsgHdr));
 						}
 						memset(&tmp, 0, sizeof(PointData));
-						//printf("%d\n", dat.N);
 						UserAPI::whole_data_process(dat, cfg->from_zero, cfg->collect_angle, cfg->output_file, tmp, whole_datas);
 
 						//执行回调函数
 						if (tmp.N > 0)
 						{
-
 							//E100系列
 							if (cfg->shadows_filter.enable)
 							{
@@ -1374,6 +1388,22 @@ DWORD  WINAPI lidar_thread_proc_uart(void* param)
 							{
 								int nr = AlgorithmAPI_E100::MedianFilter(&tmp, cfg->median_filter);
 							}
+
+							bool isAllZero = true;
+							for (int i = 0; i < tmp.N; i++)
+							{
+								if (tmp.points[i].distance != 0)
+								{
+									isAllZero = false;
+									break;
+								}
+							}
+							if (isAllZero)
+							{
+								((void(*)(int, void*))cfg->callback)(3, (char*)"The ridar distance of the current sector is all 0");
+								continue;
+							}
+
 							((void(*)(int, void*))cfg->callback)(1, &tmp);
 							memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
 						}
@@ -1902,6 +1932,22 @@ void *lidar_thread_proc_uart(void *param)
 							{
 								AlgorithmAPI_E100::MedianFilter(&tmp, cfg->median_filter);
 							}
+
+							bool isAllZero = true;
+							for (int i = 0; i < tmp.N; i++)
+							{
+								if (tmp.points[i].distance != 0)
+								{
+									isAllZero = false;
+									break;
+								}
+							}
+							if (isAllZero)
+							{
+								((void(*)(int, void*))cfg->callback)(3, (char*)"The ridar distance of the current sector is all 0");
+								continue;
+							}
+
 							((void (*)(int, void *))cfg->callback)(1, &tmp);
 							memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
 						}
@@ -2533,6 +2579,7 @@ void *lidar_thread_proc_udp(void *param)
 					{
 						//！！！CN:用户需要提取数据的操作，可以参考该函数,具体详细的其他打印操作参考user.cpp文件
 						//！！！EN:User needs to extract data operation, you can refer to this function，For details about other printing operations, please refer to the user.cpp file
+						memset(&tmp, 0, sizeof(PointData));
 						if (cfg->output_scan)
 						{
 							if (is_pack==2)
@@ -2558,7 +2605,23 @@ void *lidar_thread_proc_udp(void *param)
 							}
 							if (tmp.N > 0)
 							{
+								bool isAllZero = true;
+								for (int i = 0; i < tmp.N; i++)
+								{
+									if (tmp.points[i].distance != 0)
+									{
+										isAllZero = false;
+										break;
+									}
+								}
+								if (isAllZero)
+								{
+									((void(*)(int, void*))cfg->callback)(3, (char*)"The ridar distance of the current sector is all 0");
+									continue;
+								}
 
+								strcpy(tmp.ip, cfg->lidar_ip);
+								tmp.port = cfg->lidar_port;
 								((void (*)(int, void *))cfg->callback)(1, &tmp);
 								memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
 							}

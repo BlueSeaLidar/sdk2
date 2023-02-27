@@ -503,7 +503,7 @@ bool GetData0x99(const RawDataHdr99& hdr, unsigned char* pdat, int with_chk, Raw
 //{
 //	if (data->flags >= 0x100)
 //	{
-//		//说锟斤拷锟斤拷LMSG_ALARM锟斤拷锟斤拷锟斤拷息
+//		//?????LMSG_ALARM???????
 //		if (getbit(data->events, 12) == 1)
 //		{
 //			INFO_PR("ALARM LEVEL:OBSERVE  MSG TYPE:%d ZONE ACTIVE:%x\n", data->flags, data->zone_actived);
@@ -583,7 +583,6 @@ int ParseAPI::parse_data_x(int len, unsigned char* buf,
 	int idx = 0;
 	while (idx < len - 18)
 	{
-		//锟斤拷锟斤拷锟斤拷锟斤拷
 		if (memcmp(buf, "LMSG", 4) == 0)
 		{
 			LidarMsgHdr* hdr = (LidarMsgHdr*)(buf + idx);
@@ -591,13 +590,12 @@ int ParseAPI::parse_data_x(int len, unsigned char* buf,
 			consume = idx + sizeof(LidarMsgHdr);
 			return 2;
 		}
-		//时锟斤拷同锟斤拷锟斤拷息
-		if (buf[idx] == 0x4c && buf[idx + 1] == 0x48 && (unsigned char)buf[idx + 2] == 0xbe && (unsigned char)buf[idx + 3] == 0xb4)
+		else if (buf[idx] == 0x4c && buf[idx + 1] == 0x48 && (unsigned char)buf[idx + 2] == 0xbe && (unsigned char)buf[idx + 3] == 0xb4)
 		{
 			consume = idx + len;
 			return 3;
 		}
-		if (buf[idx] == 'S' && buf[idx + 1] == 'T' && buf[idx + 6] == 'E' && buf[idx + 7] == 'D')
+		else if (buf[idx] == 'S' && buf[idx + 1] == 'T' && buf[idx + 6] == 'E' && buf[idx + 7] == 'D')
 		{
 			unsigned char flag = buf[idx + 2];
 			span = 360;
@@ -608,9 +606,8 @@ int ParseAPI::parse_data_x(int len, unsigned char* buf,
 			idx += 8;
 		}
 
-		if (buf[idx + 1] == 0xfa && (buf[idx] == 0xdf || buf[idx] == 0xce || buf[idx] == 0xcf || buf[idx] == 0xc7 || buf[idx] == 0x9d || buf[idx] == 0x99))
+		else if (buf[idx + 1] == 0xfa && (buf[idx] == 0xdf || buf[idx] == 0xce || buf[idx] == 0xcf || buf[idx] == 0xc7 || buf[idx] == 0x9d || buf[idx] == 0x99))
 		{
-			// found;
 			pack_format = buf[idx];
 		}
 		else
@@ -820,7 +817,7 @@ void UserAPI::fan_data_process(const RawData& raw, const char* output_file, Poin
 	tmp.N = data->N;
 	memcpy(tmp.ts, data->ts, sizeof(uint32_t) * 2);
 	memcpy(tmp.points, data->points, sizeof(DataPoint) * data->N);
-	//执锟叫回碉拷锟斤拷锟斤拷
+	//??л??????
 	//((void(*)(int, void *))msgptr)(1, &tmp);
 
 	if (output_file != NULL)
@@ -914,4 +911,134 @@ void UserAPI::whole_data_process(const RawData& raw, bool from_zero, int collect
 	}
 	delete[] points;
 }
+bool judgepcIPAddrIsValid(const char* pcIPAddr)
+{
+	int iDots = 0; /* 字符.的个数 */
+	int iSetions = 0; /* pcIPAddr 每一部分总和（0-255）*/
 
+	if (NULL == pcIPAddr || *pcIPAddr == '.') { /*排除输入参数为NULL, 或者一个字符为'.'的字符串*/
+		return false;
+	}
+
+	/* 循环取每个字符进行处理 */
+	while (*pcIPAddr)
+	{
+		if (*pcIPAddr == '.')
+		{
+			iDots++;
+			/* 检查 pcIPAddr 是否合法 */
+			if (iSetions >= 0 && iSetions <= 255)
+			{
+				iSetions = 0;
+				pcIPAddr++;
+				continue;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else if (*pcIPAddr >= '0' && *pcIPAddr <= '9') 	/*判断是不是数字*/
+		{
+			iSetions = iSetions * 10 + (*pcIPAddr - '0'); /*求每一段总和*/
+		}
+		else
+		{
+			return false;
+		}
+		pcIPAddr++;
+	}
+
+	/* 判断最后一段是否有值 如：1.1.1. */
+	if ((*pcIPAddr == '\0') && (*(pcIPAddr - 1) == '.'))
+	{
+		return false;
+	}
+
+	/* 判断最后一段是否合法 */
+	if (iSetions >= 0 && iSetions <= 255)
+	{
+		if (iDots == 3)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+bool BaseAPI::checkAndMerge(int type, char* ip, char* mask, char* gateway, int port, char* result)
+{
+	std::string s = ip;
+	int a[4] = { 0 };
+	for (int i = 0; i < 4; i++)
+	{
+		int tmp = s.find('.', 0);
+		std::string str = s.substr(0, tmp);
+		a[i] = atoi(str.c_str());
+		s = s.substr(tmp + 1);
+		if (a[0] < 10)
+			return false;
+	}
+	if (!judgepcIPAddrIsValid(ip))
+		return false;
+	if (port <= 1000 || port > 65535)
+		return false;
+	if (type == 0)
+	{
+		sprintf(result, "%03d.%03d.%03d.%03d %05d", a[0], a[1], a[2], a[3], port);
+		return true;
+	}
+	else
+	{
+		if (!judgepcIPAddrIsValid(mask) || !judgepcIPAddrIsValid(gateway))
+			return false;
+		int b[4] = { 0 };
+		s = mask;
+		for (int i = 0; i < 4; i++)
+		{
+			int tmp = s.find('.', 0);
+			std::string str = s.substr(0, tmp);
+			b[i] = atoi(str.c_str());
+			s = s.substr(tmp + 1);
+			if (b[0] == 0)
+				return false;
+		}
+		int c[4] = { 0 };
+		s = gateway;
+		for (int i = 0; i < 4; i++)
+		{
+			int tmp = s.find('.', 0);
+			std::string str = s.substr(0, tmp);
+			c[i] = atoi(str.c_str());
+			s = s.substr(tmp + 1);
+			if (c[0] == 0)
+				return false;
+		}
+
+		unsigned int str1 = 0;
+		unsigned int str2 = 0;
+		unsigned int str3 = 0;
+
+		//字符串转整形
+		//sscanf(ip, "%d.%d.%d.%d", &nTmpIP[0], &nTmpIP[1], &nTmpIP[2], &nTmpIP[3]);
+		for (int i = 0; i < 4; i++)
+		{
+			str1 += (a[i] << (24 - (i * 8)) & 0xFFFFFFFF);
+		}
+		for (int i = 0; i < 4; i++)
+		{
+			str2 += (b[i] << (24 - (i * 8)) & 0xFFFFFFFF);
+		}
+		for (int i = 0; i < 4; i++)
+		{
+			str3 += (c[i] << (24 - (i * 8)) & 0xFFFFFFFF);
+		}
+		if ((str1 & str2) != (str2 & str3))
+			return false;
+
+
+		sprintf(result, "%03d.%03d.%03d.%03d %03d.%03d.%03d.%03d %03d.%03d.%03d.%03d %05d",
+			a[0], a[1], a[2], a[3], b[0], b[1], b[2], b[3], c[0], c[1], c[2], c[3], port);
+		return true;
+	}
+}
