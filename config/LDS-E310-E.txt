@@ -5,7 +5,7 @@ lidar_ip:192.168.0.75
 lidar_port:6543
 lidar_ip1:192.168.0.98
 lidar_port2:6543
-local_port:6669
+local_port:6668
 raw_bytes:3
 unit_is_mm:1
 with_confidence:1
@@ -20,5 +20,7 @@ from_zero:1
 output_file:C:\\qwer.txt
 is_group_listener:0
 group_ip:224.0.0.99
-service_port:8889
+service_port:8888
 is_open_service:1
+error_circle:3
+error_scale:0.9

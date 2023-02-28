@@ -27,3 +27,5 @@ shadow_filter.window:5
 shadow_filter.neighbors:10
 median_filter.enable:1
 median_filter.window:1
+error_circle:3
+error_scale:0.9

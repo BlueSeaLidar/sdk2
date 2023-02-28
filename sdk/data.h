@@ -344,7 +344,7 @@ struct EEpromV101
 	uint8_t functions_map[16];
 	uint8_t reserved[36];
 };
-//CN:UDP设置雷达参数时接收使用报文头	EN:UDP uses the header when setting radar parameters
+//CN:UDP设置雷达参数时接收使用报文头	EN:UDP uses the header when setting lidar parameters
 struct CmdHeader
 {
 	unsigned short sign; //CN:与硬件约定的标志位						EN:Flags consistent with hardware

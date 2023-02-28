@@ -21,3 +21,5 @@ group_ip:224.0.0.99
 service_port:8888
 is_open_service:1
 alarm_msg:0
+error_circle:3
+error_scale:0.9

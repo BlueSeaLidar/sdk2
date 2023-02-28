@@ -40,10 +40,12 @@ struct RunConfig
 	// control
 	bool should_quit;		//CN:退出标志位							EN:quit flag	
 	int alarm_msg;			//CN:是否打开防区报警					EN:Whether to turn on the zone alarm
+	int error_circle;		//CN:检测长度为0的圈数					EN:Detect the number of turns with a length of 0
+	float error_scale;		//CN:检测长度为0的比例					EN:Detect the Scale of turns with a length of 0
 	char version[64];		//CN:硬件版本号							EN:Hardware version
 #ifdef __linux
 	int msgid;//消息队列ID
-	pthread_t thread;		//CN:和雷达通信子线程					EN:Sub-thread: responsible for communicating with radar
+	pthread_t thread;		//CN:和雷达通信子线程					EN:Sub-thread: responsible for communicating with lidar
 #elif  _WIN32
 	HANDLE thread;
 	HANDLE hStartEvent;
@@ -99,7 +101,7 @@ int setup_lidar_uart(int fd_uart, int unit_is_mm, int with_confidence, int resam
  void send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port, int cmd, int sn, int len, const void* snd_buf, bool savelog);
 
  bool readConfig(const char* cfg_file_name, RunConfig& cfg);
-
+ bool checkPointsLengthZero(PointData tmp, float scale);
 #endif
 
 

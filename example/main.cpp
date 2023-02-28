@@ -14,15 +14,9 @@
 #include <string.h>
 #include "../sdk/standard_interface.h"
 
-int errorNum=0;//计数当前连续圈数距离为0的数量、
-
-
 //传入回调指针的方式打印
 void CallBackMsg(int msgtype, void* param)
 {
-
-	if (msgtype != 3)
-		errorNum = 0;
 	//实时雷达数据返回
 	if (msgtype == 1)
 	{
@@ -98,9 +92,9 @@ void CallBackMsg(int msgtype, void* param)
 	//获取错误信息
 	else if (msgtype == 3)
 	{
-		errorNum++;
-		char*result = (char*)param;
-		INFO_PR("Error Info : %s  index:%d\n", result, errorNum);
+		char* result = (char*)param;
+		INFO_PR("Error Info : %s\n", result);
+
 	}
 	//获取雷达时间戳打印信息
 	else if (msgtype == 4)
@@ -245,7 +239,6 @@ int main(int argc, char **argv)
 	//			DevData tmpData;
 	//			memset(&tmpData, 0, sizeof(DevData));
 	//			// tmpData.RPM = 600;
-	//			// tmpData.ERR = -88;
 	// !!!说明，如果IP  子网掩码  网关三者不匹配，设置后会导致网络款雷达无法使用，集成该命令可使用BaseAPI::checkAndMerge接口
 	//			//strcpy(tmpData.UDP, "192.168.000.110 255.255.255.000 192.168.000.001 06543"); //修改雷达IP地址 子网掩码 网关(三位补0) 端口号(五位补0)
 	//			
@@ -271,12 +264,11 @@ int main(int argc, char **argv)
 	//			//需要调用到那些功能，自行去掉注释并且设置参数，具体的取值范围查看data.h文件的结构体
 
 	//			// memcpy(tmpData.set, "1", 1);	 // RPM设置
-	//			// memcpy(tmpData.set + 1, "1", 1); //偏差设置
 	//			//memcpy(tmpData.set + 2, "1", 1); // UDP设置
 	//			// memcpy(tmpData.set + 3, "1", 1); //接收端设置   特殊说明:需要与固定上传一起使用，否则可能不生效
 	//			// memcpy(tmpData.set + 4, "1", 1); //设备型号开关
 	//			// memcpy(tmpData.set + 5, "1", 1); //设备序列号开关
-	//			// memcpy(tmpData.set + 6, "1", 1); //滤波圈数
+	//			// memcpy(tmpData.set + 6, "1", 1); //防区滤波圈数
 	//			// memcpy(tmpData.set + 7, "1", 1); //电机启动脉冲
 	//			// memcpy(tmpData.set + 8, "1", 1); //版本号
 	//			// memcpy(tmpData.set + 9, "1", 1); //IO类型

@@ -168,16 +168,6 @@ int setup_lidar_extre(std::string type,int fd, const char* ip, int port, DevData
 			int RPM = data.RPM;
 			sprintf(cmd, "LSRPM:%04dH", RPM);
 		}
-		//偏差距离
-		else if (i == 1 && data.set[i] == '1')
-		{
-			flag = 1;
-			int ERR = data.ERR;
-			if (ERR > 0)
-				sprintf(cmd, "LSERR:+%dH", ERR);
-			else
-				sprintf(cmd, "LSERR:%dH", ERR);
-		}
 		else if (i == 2 && data.set[i] == '1')
 		{
 			flag = 1;
@@ -504,6 +494,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 	FanSegment** fan_segs = new FanSegment*;
 	*fan_segs = NULL;
 	std::vector<RawData*> whole_datas;
+	int error_num = 0;
 	//ws2_32库会导致setsockopt失败，这里使用wsock32库
 	//设置组播模式
 	if (cfg->is_group_listener == 1)
@@ -672,21 +663,17 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 							}
 							if (tmp.N > 0)
 							{
-								bool isAllZero = true;
-								for (int i = 0; i < tmp.N; i++)
+								if (checkPointsLengthZero(tmp, cfg->error_scale))
+									error_num++;
+								else
+									error_num = 0;
+								if (cfg->error_circle <= error_num)
 								{
-									if (tmp.points[i].distance!= 0)
-									{
-										isAllZero = false;
-										break;
-									}
+									char tmp_str[128] = { 0 };
+									sprintf(tmp_str, "%s  %d There are many points with a distance of 0 in the current ridar operation", cfg->lidar_ip, cfg->lidar_port);
+									((void(*)(int, void*))cfg->callback)(3, tmp_str);
+									error_num = 0;
 								}
-								if (isAllZero)
-								{
-									((void(*)(int, void*))cfg->callback)(3, (char*)"The ridar distance of the current sector is all 0");
-									continue;
-								}
-
 
 								strcpy(tmp.ip, cfg->lidar_ip);
 								tmp.port = cfg->lidar_port;
@@ -1286,6 +1273,8 @@ DWORD  WINAPI lidar_thread_proc_uart(void* param)
 	FanSegment** fan_segs = new FanSegment*;
 	*fan_segs = NULL;
 	std::vector<RawData*> whole_datas;
+	int error_num = 0;
+
 	if (strcmp(cfg->type, "uart") == 0)
 		setup_lidar_uart((void*)cfg->fd, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
 	else
@@ -1389,20 +1378,18 @@ DWORD  WINAPI lidar_thread_proc_uart(void* param)
 								int nr = AlgorithmAPI_E100::MedianFilter(&tmp, cfg->median_filter);
 							}
 
-							bool isAllZero = true;
-							for (int i = 0; i < tmp.N; i++)
+							if (checkPointsLengthZero(tmp, cfg->error_scale))
+								error_num++;
+							else
+								error_num = 0;
+							if (cfg->error_circle <= error_num)
 							{
-								if (tmp.points[i].distance != 0)
-								{
-									isAllZero = false;
-									break;
-								}
+								char tmp_str[128] = { 0 };
+								sprintf(tmp_str, "%s %d There are many points with a distance of 0 in the current lidar operation", cfg->port, cfg->baud_rate);
+								((void(*)(int, void*))cfg->callback)(3, tmp_str);
+								error_num = 0;
 							}
-							if (isAllZero)
-							{
-								((void(*)(int, void*))cfg->callback)(3, (char*)"The ridar distance of the current sector is all 0");
-								continue;
-							}
+
 
 							((void(*)(int, void*))cfg->callback)(1, &tmp);
 							memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
@@ -1798,6 +1785,7 @@ void *lidar_thread_proc_uart(void *param)
     FanSegment**fan_segs=new FanSegment*;
 	*fan_segs = NULL;
 	std::vector<RawData*> whole_datas;
+	int error_num = 0;
 	ZoneAlarm *zonealarm = new ZoneAlarm(cfg->fd, false, (void *)CallBack_Uart);
 	if (strcmp(cfg->type, "uart") == 0)
 		setup_lidar_uart(cfg->fd, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
@@ -1933,19 +1921,16 @@ void *lidar_thread_proc_uart(void *param)
 								AlgorithmAPI_E100::MedianFilter(&tmp, cfg->median_filter);
 							}
 
-							bool isAllZero = true;
-							for (int i = 0; i < tmp.N; i++)
+							if (checkPointsLengthZero(tmp, cfg->error_scale))
+								error_num++;
+							else
+								error_num = 0;
+							if (cfg->error_circle <= error_num)
 							{
-								if (tmp.points[i].distance != 0)
-								{
-									isAllZero = false;
-									break;
-								}
-							}
-							if (isAllZero)
-							{
-								((void(*)(int, void*))cfg->callback)(3, (char*)"The ridar distance of the current sector is all 0");
-								continue;
+								char tmp_str[128] = { 0 };
+								sprintf(tmp_str, "%s %d There are many points with a distance of 0 in the current lidar operation", cfg->port, cfg->baud_rate);
+								((void(*)(int, void*))cfg->callback)(3, tmp_str);
+								error_num = 0;
 							}
 
 							((void (*)(int, void *))cfg->callback)(1, &tmp);
@@ -2420,6 +2405,7 @@ void *lidar_thread_proc_udp(void *param)
     FanSegment**fan_segs=new FanSegment*;
 	*fan_segs = NULL;
 	std::vector<RawData*> whole_datas;
+	int error_num = 0;
 	if (cfg->is_group_listener == 1)
 	{
 		ip_mreq group;
@@ -2605,19 +2591,17 @@ void *lidar_thread_proc_udp(void *param)
 							}
 							if (tmp.N > 0)
 							{
-								bool isAllZero = true;
-								for (int i = 0; i < tmp.N; i++)
+								
+								if (checkPointsLengthZero(tmp, cfg->error_scale))
+									error_num++;
+								else
+									error_num = 0;
+								if (cfg->error_circle <= error_num)
 								{
-									if (tmp.points[i].distance != 0)
-									{
-										isAllZero = false;
-										break;
-									}
-								}
-								if (isAllZero)
-								{
-									((void(*)(int, void*))cfg->callback)(3, (char*)"The ridar distance of the current sector is all 0");
-									continue;
+									char tmp_str[128] = { 0 };
+									sprintf(tmp_str, "%s %d There are many points with a distance of 0 in the current lidar operation", cfg->lidar_ip, cfg->lidar_port);
+									((void(*)(int, void*))cfg->callback)(3, tmp_str);
+									error_num = 0;
 								}
 
 								strcpy(tmp.ip, cfg->lidar_ip);
@@ -2777,6 +2761,7 @@ bool readConfig(const char* cfg_file_name, RunConfig& cfg)
 	std::string baud_rate, port;
 	std::string service_port, is_open_service;
 	std::string alarm_msg;
+	std::string error_circle,error_scale;
 	while (getline(infile, s))
 	{
 		std::string tmp;
@@ -2938,8 +2923,40 @@ bool readConfig(const char* cfg_file_name, RunConfig& cfg)
 			getline(linestream, lidar_port_s, ':');
 			cfg.lidar_port = atoi(lidar_port_s.c_str());
 		}
+		else if (tmp == "error_circle")
+		{
+		getline(linestream, error_circle, ':');
+		cfg.error_circle = atoi(error_circle.c_str());
+		}
+		else if (tmp == "error_scale")
+		{
+		getline(linestream, error_scale, ':');
+		cfg.error_scale = atof(error_scale.c_str());
+		}
 	}
+	if (cfg.error_scale == 0)
+		cfg.error_scale = 0.9;
+
+	if (cfg.error_circle == 0)
+		cfg.error_circle = 3;
+
 	return true;
+}
+
+bool checkPointsLengthZero(PointData tmp, float scale)
+{
+	int lengthZeroNum = 0;
+	for (int i = 0; i < tmp.N; i++)
+	{
+		if (tmp.points[i].distance == 0)
+		{
+			lengthZeroNum++;
+		}
+	}
+	//printf("lengthZeroNum:%d N:%d scale:%f\n", lengthZeroNum, tmp.N, tmp.N * scale);
+	if (tmp.N * scale < lengthZeroNum)
+		return true;
+	return false;
 }
 
 

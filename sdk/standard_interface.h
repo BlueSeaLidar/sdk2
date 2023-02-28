@@ -11,7 +11,7 @@
 #include <sys/msg.h>
 #endif
 
-#define SDKVERSION   "2.0"  //SDK版本号
+#define SDKVERSION   "2.1"  //SDK版本号
 
 /************************************************
 * @functionName:  read_config
@@ -30,7 +30,7 @@ bool read_config(const char* cfg_file_name, RunConfig& cfg);
 /************************************************
 * @functionName:  openDev
 * @date:          2022-03-28
-* @description:   CN:启动雷达  EN:start radar
+* @description:   CN:启动雷达  EN:start lidar
 * @Parameter:
 				  1.cfg[const RunConfig,OUT]			CN:配置文件数据			 EN:config file data
 
@@ -41,7 +41,7 @@ int openDev(RunConfig& cfg, int index);
 /************************************************
 * @functionName:  thread_set_run
 * @date:          2022-05-05
-* @description:   CN:子线程启动雷达  EN:child thread start radar
+* @description:   CN:子线程启动雷达  EN:child thread start lidar
 * @Parameter:
 				  1.cfg[const RunConfig,OUT]			CN:配置文件数据			 EN:config file data
 
@@ -52,7 +52,7 @@ int thread_set_run(RunConfig& cfg);
 /************************************************
 * @functionName:  getLidarData
 * @date:          2022-05-05
-* @description:   CN:获取雷达的打印数据  EN:Get printed data from radar
+* @description:   CN:获取雷达的打印数据  EN:Get printed data from lidar
 * @Parameter:	  1.threadID [long,IN]  CN:子线程ID/消息队列ID  EN:Child thread ID/message queue ID
 *				  2.dataGet	[bool,IN]   CN:打印开关			   EN:is print?
 * @return:        0  success   !=0  false
@@ -84,7 +84,7 @@ int SetDevInfo_extre(long threadID, DevData &data);
 /************************************************
 * @functionName:  GetLidarTimestamp
 * @date:          2022-05-05
-* @description:   CN:获取雷达时间戳信息  EN:Get radar timestamp information
+* @description:   CN:获取雷达时间戳信息  EN:Get lidar timestamp information
 * @Parameter:	  1.threadID [long,IN]  CN:子线程ID/消息队列ID  EN:Child thread ID/message queue ID
 *				  2.dataGet	[bool,IN]   CN:打印开关			   EN:is print?
 * @return:        0
@@ -115,7 +115,7 @@ int SetAlarmZone(long threadID, zones &data);
 /************************************************
 * @functionName:  StopDrv
 * @date:          2022-03-28
-* @description:   CN:关闭雷达  EN:stop radar
+* @description:   CN:关闭雷达  EN:stop lidar
 * @Parameter:
 				  1.run[RunConfig,OUT]			CN:配置文件数据			 EN:config file data
 
@@ -127,7 +127,7 @@ void StopDrv(RunConfig* run);
 /************************************************
 * @functionName:  ControlDrv
 * @date:          2022-03-28
-* @description:   CN:设置雷达开启或者暂停  EN:Set the radar on or off
+* @description:   CN:设置雷达开启或者暂停  EN:Set the lidar on or off
 * @Parameter:	  1.threadID [long,IN]  CN:子线程ID/消息队列ID  EN:Child thread ID/message queue ID
 *				  2.data	[const char*,IN]   CN:雷达启停测距指令	EN:conctrl lidar cmd
 * @return:        
