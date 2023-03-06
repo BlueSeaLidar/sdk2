@@ -277,6 +277,7 @@ protected:
 	int SetGraph(int zone_id, int ngl, unsigned char* graph);
 	void SetProtectLines(int zone_id, const ProtectLine* lines);
 	void UpdatePolygon(PolygonX* po);
+	void UpdatePolygon2(PolygonX* po);
 private:
 	bool isRun  {true};
 	int m_fd{ 0 };

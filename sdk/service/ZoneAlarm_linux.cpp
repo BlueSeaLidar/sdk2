@@ -721,6 +721,25 @@ void ZoneAlarm::UpdatePolygon(PolygonX* po)
 		}
 
 }
+void ZoneAlarm::UpdatePolygon2(PolygonX* po)
+{
+	if (po->type == POLY_FAN)
+	{
+		Point pt1 = po->helper->pt;
+		Point pt2 = po->helper->next->pt;
+
+		double ang1 = atan2(pt1.y, pt1.x);
+		double r1 = sqrt(pt1.y * pt1.y + pt1.x * pt1.x);
+
+		double ang2 = atan2(pt2.y, pt2.x);
+		double r2 = sqrt(pt2.y * pt2.y + pt2.x * pt2.x);
+
+		po->first->pt.x = r2 * cos(ang1);
+		po->first->pt.y = r2 * sin(ang1);
+		po->first->next->pt.x = r1 * cos(ang2);
+		po->first->next->pt.y = r1 * sin(ang2);
+	}
+}
 void FreePolygon(PolygonX* po)
 {
 	while (po->first)

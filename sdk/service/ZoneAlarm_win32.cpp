@@ -471,15 +471,6 @@ int ZoneAlarm::setZone(zones& data,int sn)
 	uint32_t* buf1 = (uint32_t*)m_zoneDef;
 	m_zoneDef->hdr.crc = BaseAPI::stm32crc(buf1 + 4, (sz - 16) / 4);
 
-	//FILE* fp = fopen("2.txt", "w");
-	//if (fp)
-	//{
-	//	for (int i = 0; i < sizeof(ZoneDef); i++)
-	//	{
-	//		fprintf(fp, "%02x \n", ((char*)m_zoneDef)[i]);
-	//	}
-	//	fclose(fp);
-	//}
 	m_transBuf = new TransBuf;
 	memcpy(m_transBuf->buf, m_zoneDef, sz);
 	m_transBuf->total = sz;
@@ -708,6 +699,25 @@ void ZoneAlarm::UpdatePolygon(PolygonX* po)
 			po->helper->next->pt.y = r1 * sin(ang2);
 		}
 
+}
+void ZoneAlarm::UpdatePolygon2(PolygonX* po)
+{
+	if (po->type == POLY_FAN)
+	{
+		Point pt1 = po->helper->pt;
+		Point pt2 = po->helper->next->pt;
+
+		double ang1 = atan2(pt1.y, pt1.x);
+		double r1 = sqrt(pt1.y * pt1.y + pt1.x * pt1.x);
+
+		double ang2 = atan2(pt2.y, pt2.x);
+		double r2 = sqrt(pt2.y * pt2.y + pt2.x * pt2.x);
+
+		po->first->pt.x = r2 * cos(ang1);
+		po->first->pt.y = r2 * sin(ang1);
+		po->first->next->pt.x = r1 * cos(ang2);
+		po->first->next->pt.y = r1 * sin(ang2);
+	}
 }
 void FreePolygon(PolygonX* po)
 {

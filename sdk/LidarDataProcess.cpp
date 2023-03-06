@@ -614,7 +614,6 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 
 				}//点云数据
 				else {
-
 					RawData dat;
 					LidarMsgHdr zone;
 					memset(&zone, 0, sizeof(LidarMsgHdr));
@@ -625,7 +624,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 						is_pack = ParseAPI::parse_data_x(len, buf,
 							fan_span, cfg->unit_is_mm, cfg->with_confidence,
 							dat, consume, cfg->with_chk, zone, fan_segs);
-
+						//printf("%d\n", dat.angle);
 					}
 					else
 					{
@@ -857,22 +856,38 @@ bool uart_talk(HANDLE hCom, int n, const char* cmd, int nhdr, const char* hdr_st
 		{
 			if (nfetch > 0)
 			{
-				memcpy(fetch, buf + i + nhdr, nfetch);
-				fetch[nfetch] = 0;
+				if (strcmp(cmd, "LXVERH") == 0 || strcmp(cmd, "LUUIDH") == 0)
+				{
+					memcpy(fetch, buf + i + nhdr, nfetch);
+					fetch[nfetch] = 0;
+				}
+				else
+				{
+					strcpy(fetch, "OK");
+					fetch[3] = 0;
+				}
+			}
+			return true;
+		}
+		else if (memcmp(buf + i, cmd, n) == 0)
+		{
+			if (nfetch > 0)
+			{
+				memcpy(fetch, buf + i + n+1, 2);
+				fetch[2] = 0;
+			}
+			return true;
+		}
+		else if (memcmp(buf + i,"unsupport", 9) == 0)
+		{
+			if (nfetch > 0)
+			{
+				strcpy(fetch, "unsupport");
+				fetch[10] = 0;
 			}
 			return true;
 		}
 	}
-
-	/*char path[256];
-	sprintf_s(path, 250, "./tmp/%s.dat", hdr_str);
-	FILE* fp;
-	if (fopen_s(&fp, path, "wb") == 0)
-	{
-		fwrite(buf, 1, sizeof(buf), fp);
-		fclose(fp);
-	}*/
-
 	printf("read %d bytes, not found %s\n", nr, hdr_str);
 	return false;
 }
@@ -1025,6 +1040,7 @@ int setup_lidar_uart(HANDLE hCom, int unit_is_mm, int with_confidence, int resam
 
 	char buf[32];
 	DWORD nr = 0;
+	int index = 3;
 	//set  lidar start up
 	WriteFile(hCom, "LSTARH", 6, &nr, NULL);
 
@@ -1037,55 +1053,79 @@ int setup_lidar_uart(HANDLE hCom, int unit_is_mm, int with_confidence, int resam
 		return -1;
 	}
 	//Get  hardware version info
-	if (uart_talk(hCom, 6, "LXVERH", 14, "MOTOR VERSION:", 15, buf))
+	for (int i = 0; i < index; i++)
 	{
-		memcpy(version, buf, 12);
-		printf("set LiDAR LXVERH  OK\n");
+		if (uart_talk(hCom, 6, "LXVERH", 14, "MOTOR VERSION:", 12, buf))
+		{
+			memcpy(version, buf, 12);
+			printf("set LiDAR LXVERH  %s\n", version);
+			break;
+		}
 	}
 	//Set the lidar returned data unit   CM or MM
-	if (uart_talk(hCom, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH", 6, "LiDAR ", 5, buf))
+	for (int i = 0; i < index; i++)
 	{
-		printf("set LiDAR unit OK\n");
+		if (uart_talk(hCom, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH", 6, "LiDAR ", 12, buf))
+		{
+			printf("set LiDAR unit %s\n", buf);
+			break;
+		}
 	}
 	//set lidar confidence state   LNCONH close   LOCONH open
-	if (uart_talk(hCom, 6, with_confidence == 0 ? "LNCONH" : "LOCONH", 6, "LiDAR ", 5, buf))
+	for (int i = 0; i < index; i++)
 	{
-		printf("set LiDAR confidence OK\n");
+		if (uart_talk(hCom, 6, with_confidence == 0 ? "LNCONH" : "LOCONH", 6, "LiDAR ", 12, buf))
+		{
+			printf("set LiDAR confidence %s\n",buf);
+			break;
+		}
 	}
 	//set  de-deshadow state    LFFF0H:close  LFFF1H:open
-	if (uart_talk(hCom, 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H", 6, "LiDAR ", 0, NULL))
+	for (int i = 0; i < index; i++)
 	{
-		printf("set deshadow OK\n");
+		if (uart_talk(hCom, 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H", 6, "LiDAR ", 12, buf))
+		{
+			printf("set deshadow %s\n", buf);
+			break;
+		}
 	}
 	//set  de-smooth     LSSS0H:close   LSSS1H:open
-	if (uart_talk(hCom, 6, with_smooth == 0 ? "LSSS0H" : "LSSS1H", 6, "LiDAR ", 0, NULL))
+	for (int i = 0; i < index; i++)
 	{
-		printf("set smooth to OK\n");
+		if (uart_talk(hCom, 6, with_smooth == 0 ? "LSSS0H" : "LSSS1H", 6, "LiDAR ", 12, buf))
+		{
+			printf("set smooth %s\n",buf);
+			break;
+		}
 	}
 	//LSRES:000H :set default Angular resolution  LSRES:001H :fix Angular resolution  
 	if (resample == 0)
-		strcpy_s(buf, 30, "LSRES:000H");
+		strcpy_s(buf, 30, "LSRES:0H");
 	else if (resample == 1)
-		strcpy_s(buf, 30, "LSRES:001H");
+		strcpy_s(buf, 30, "LSRES:1H");
 	else
 		buf[0] = 0;
 
 	if (buf[0]) {
-		if (uart_talk(hCom, 10, buf, 15, "set resolution ", 0, NULL))
+		for (int i = 0; i < index; i++)
 		{
-			printf("set LiDAR resample OK\n");
+			if (uart_talk(hCom, 10, buf, 15, "set resolution ", 12, buf))
+			{
+				printf("set LiDAR resample %s\n",buf);
+				break;
+			}
 		}
 	}
 	// setup rpm  (The specific model range is different)
 	if (init_rpm > 300 && init_rpm < 3000)
 	{
-		for (int i = 0; i < 5; i++)
+		for (int i = 0; i < index; i++)
 		{
 			char cmd[32];
 			sprintf(cmd, "LSRPM:%dH", init_rpm);
-			if (uart_talk(hCom, strlen(cmd), cmd, 3, "RPM", 0, NULL))
+			if (uart_talk(hCom, strlen(cmd), cmd, 3, "RPM", 12, buf))
 			{
-				printf("set RPM to %d  OK\n", init_rpm);
+				printf("set RPM to %d  %s\n", init_rpm, buf);
 				break;
 			}
 		}
@@ -1596,21 +1636,39 @@ bool uart_talk(int fd, int n, const char *cmd,
 		{
 			if (nfetch > 0)
 			{
-				memcpy(fetch, buf + i + nhdr, nfetch);
-				fetch[nfetch] = 0;
+				if(strcmp(cmd,"LXVERH")==0|| strcmp(cmd, "LUUIDH") == 0)
+				{
+					memcpy(fetch, buf + i +nhdr, nfetch);
+					fetch[nfetch] = 0;
+				}
+				else
+				{
+					strcpy(fetch, "OK");
+					fetch[3] = 0;
+				}
+				
+			}
+			return true;
+		}
+		else if (memcmp(buf + i, cmd, n) == 0)
+		{
+			if (nfetch > 0)
+			{
+				memcpy(fetch, buf + i + n+1, 2);
+				fetch[2] = 0;
+			}
+			return true;
+		}
+		else if (memcmp(buf + i,"unsupport", 9) == 0)
+		{
+			if (nfetch > 0)
+			{
+				strcpy(fetch, "unsupport");
+				fetch[10] = 0;
 			}
 			return true;
 		}
 	}
-#if 0
-	char path[256];
-	sprintf(path, "/tmp/%s.dat", hdr_str);
-	FILE* fp = fopen(path, "wb");
-	if (fp) {
-		fwrite(buf, 1, sizeof(buf), fp);
-		fclose(fp);
-	}
-#endif
 
 	printf("read %d bytes, not found %s\n", nr, hdr_str);
 	return false;
@@ -2176,6 +2234,7 @@ int setup_lidar_vpc(int hCom, int unit_is_mm, int with_confidence, int resample,
 int setup_lidar_uart(int fd_uart, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char *version)
 {
 	char buf[32];
+	int index = 3;
 	int nr = 0;
 	write(fd_uart, "LSTARH", 6);
 	for (int i = 0; i < 300 && nr <= 0; i++)
@@ -2190,63 +2249,79 @@ int setup_lidar_uart(int fd_uart, int unit_is_mm, int with_confidence, int resam
 		return READ_UART_FAILED;
 	}
 	//硬件版本号
-	if (uart_talk(fd_uart, 6, "LXVERH", 14, "MOTOR VERSION:", 15, buf))
+	for (int i = 0; i < index; i++)
 	{
-		memcpy(version, buf, 12);
-		printf("set LiDAR LXVERH  OK\n");
+		if (uart_talk(fd_uart, 6, "LXVERH", 14, "MOTOR VERSION:", 12, buf))
+		{
+			memcpy(version, buf, 12);
+			printf("set LiDAR LXVERH  %s\n", version);
+			break;
+		}
 	}
-
-	if (uart_talk(fd_uart, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",
-				  10, "SET LiDAR ", 0, NULL))
+	//Set the lidar returned data unit   CM or MM
+	for (int i = 0; i < index; i++)
 	{
-		printf("set LiDAR unit OK\n");
+		if (uart_talk(fd_uart, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH", 6, "LiDAR ", 12, buf))
+		{
+			printf("set LiDAR unit %s\n", buf);
+			break;
+		}
 	}
-
-	if (uart_talk(fd_uart, 6, with_confidence == 0 ? "LNCONH" : "LOCONH",
-				  6, "LiDAR ", 0, NULL))
+	//set lidar confidence state   LNCONH close   LOCONH open
+	for (int i = 0; i < index; i++)
 	{
-		printf("set LiDAR confidence OK\n");
+		if (uart_talk(fd_uart, 6, with_confidence == 0 ? "LNCONH" : "LOCONH", 6, "LiDAR ", 12, buf))
+		{
+			printf("set LiDAR confidence %s\n",buf);
+			break;
+		}
 	}
-
-	if (uart_talk(fd_uart, 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H",
-				  6, "LiDAR ", 0, NULL))
+	//set  de-deshadow state    LFFF0H:close  LFFF1H:open
+	for (int i = 0; i < index; i++)
 	{
-		printf("set deshadow OK\n");
+		if (uart_talk(fd_uart, 6, with_deshadow == 0 ? "LFFF0H" : "LFFF1H", 6, "LiDAR ", 12, buf))
+		{
+			printf("set deshadow %s\n", buf);
+			break;
+		}
 	}
-
-	if (uart_talk(fd_uart, 6, with_smooth == 0 ? "LSSS0H" : "LSSS1H",
-				  6, "LiDAR ", 0, NULL))
+	//set  de-smooth     LSSS0H:close   LSSS1H:open
+	for (int i = 0; i < index; i++)
 	{
-		printf("set smooth  OK\n");
+		if (uart_talk(fd_uart, 6, with_smooth == 0 ? "LSSS0H" : "LSSS1H", 6, "LiDAR ", 12, buf))
+		{
+			printf("set smooth %s\n",buf);
+			break;
+		}
 	}
-
+	//LSRES:000H :set default Angular resolution  LSRES:001H :fix Angular resolution  
 	if (resample == 0)
-		strcpy(buf, "LSRES:000H");
+		strcpy(buf, "LSRES:0H");
 	else if (resample == 1)
-		strcpy(buf, "LSRES:001H");
-	else if (resample > 100 && resample < 1000)
-		sprintf(buf, "LSRES:%03dH", resample);
+		strcpy(buf,  "LSRES:1H");
 	else
 		buf[0] = 0;
 
-	if (buf[0])
-	{
-		char buf2[32];
-		if (uart_talk(fd_uart, 10, buf, 15, "set resolution ", 1, buf2))
+	if (buf[0]) {
+		for (int i = 0; i < index; i++)
 		{
-			printf("set LiDAR resample to %d\n", resample);
+			if (uart_talk(fd_uart, 10, buf, 15, "set resolution ", 12, buf))
+			{
+				printf("set LiDAR resample %s\n",buf);
+				break;
+			}
 		}
 	}
-	// setup rpm
+	// setup rpm  (The specific model range is different)
 	if (init_rpm > 300 && init_rpm < 3000)
 	{
-		for (int i = 0; i < 10; i++)
+		for (int i = 0; i < index; i++)
 		{
 			char cmd[32];
 			sprintf(cmd, "LSRPM:%dH", init_rpm);
-			if (uart_talk(fd_uart, strlen(cmd), cmd, 3, "RPM", 5, buf))
+			if (uart_talk(fd_uart, strlen(cmd), cmd, 3, "RPM", 12, buf))
 			{
-				printf("set RPM to %d %s\n", init_rpm, buf);
+				printf("set RPM to %d  %s\n", init_rpm, buf);
 				break;
 			}
 		}
