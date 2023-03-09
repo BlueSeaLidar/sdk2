@@ -1,7 +1,7 @@
-type:uart
-port:com10
-baud_rate:921600
-lidar_ip:192.168.0.208
+type:udp
+port:com7
+baud_rate:768000
+lidar_ip:192.168.0.99
 lidar_port:6543
 local_port:6668
 raw_bytes:3
@@ -15,12 +15,10 @@ rpm:900
 output_scan:1
 output_360:1
 from_zero:0
-collect_angle:9
-output_file:test.txt
+output_file:C:\\123.txt
 is_group_listener:0
 group_ip:224.0.0.99
 service_port:8888
 is_open_service:1
 error_circle:3
 error_scale:0.9
-

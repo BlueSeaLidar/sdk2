@@ -264,6 +264,7 @@ static bool GetData0xC7(const RawDataHdr7& hdr, uint8_t* pdat, bool with_chk, Ra
 	{
 		FanSegment* seg = (*last_fan_seg);
 
+		//printf("%d,%d  %d,%d\n", seg->hdr.timestamp, fan_seg->hdr.timestamp, seg->hdr.beg_ang, fan_seg->hdr.beg_ang);
 		if (seg->hdr.timestamp != fan_seg->hdr.timestamp)
 		{
 			printf("drop old fan segments\n");
@@ -643,7 +644,7 @@ int ParseAPI::parse_data_x(int len, unsigned char* buf,
 			}
 		}
 
-		if (hdr.N > MAX_POINTS || hdr.N < 10)
+		if (hdr.N > MAX_POINTS || hdr.N < 5)
 		{
 			printf("points number %d seem not correct\n", hdr.N);
 			idx += 2;
