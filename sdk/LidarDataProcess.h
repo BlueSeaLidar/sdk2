@@ -42,6 +42,7 @@ struct RunConfig
 	int alarm_msg;			//CN:是否打开防区报警					EN:Whether to turn on the zone alarm
 	int error_circle;		//CN:检测长度为0的圈数					EN:Detect the number of turns with a length of 0
 	float error_scale;		//CN:检测长度为0的比例					EN:Detect the Scale of turns with a length of 0
+	int direction;			//CN:雷达旋转方向						EN:lidar Rotation direction
 	char version[64];		//CN:硬件版本号							EN:Hardware version
 #ifdef __linux
 	int msgid;//消息队列ID
@@ -93,7 +94,7 @@ int setup_lidar_uart(int fd_uart, int unit_is_mm, int with_confidence, int resam
 
 
 
- bool setup_lidar_udp(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, int should_post, char* version);
+ bool setup_lidar_udp(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, int should_post, int direction,char* version);
  int setup_lidar_extre(std::string type, int fd_udp, const char* ip, int port, DevData& data);
  bool udp_talk_C_PACK(int fd_udp, const char* lidar_ip, int lidar_port, int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch);
  bool udp_talk_S_PACK(int fd_udp, const char* ip, int port, int n, const char* cmd, void* result);

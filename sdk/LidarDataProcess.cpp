@@ -35,7 +35,7 @@ send_cmd_udp_ptr CallBack_Udp;
 send_cmd_uart_ptr CallBack_Uart;
 
 
-bool setup_lidar_udp(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, int should_post, char* version)
+bool setup_lidar_udp(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, int should_post, int direction,char* version)
 {
 	char buf[32];
 	int nr = 0;
@@ -137,6 +137,20 @@ bool setup_lidar_udp(int fd_udp, const char* ip, int port, int unit_is_mm, int w
 		}
 	}
 	delete eepromv101;
+
+	if (direction >= 0)
+	{
+		char cmd[12] = { 0 };
+		sprintf(cmd, "LSCCW:%dH", direction);
+		if (udp_talk_S_PACK(fd_udp, ip, port, sizeof(cmd), cmd, result))
+		{
+			printf("set LiDAR %s %s\n", cmd, result);
+		}
+		else
+		{
+			printf("set LiDAR Rotation direction NG\n");
+		}
+	}
 	//网络款都是毫米级,带强度
 	/*if (udp_talk_C_PACK(fd_udp, ip, port, 6, unit_is_mm == 0 ? "LMDCMH" : "LMDMMH",2, "OK", 0, NULL))
 	{
@@ -516,7 +530,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 	}
 	else
 	{
-		setup_lidar_udp(cfg->fd, cfg->lidar_ip, cfg->lidar_port, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->alarm_msg, cfg->version);
+		setup_lidar_udp(cfg->fd, cfg->lidar_ip, cfg->lidar_port, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->alarm_msg, cfg->direction, cfg->version);
 	}
 
 	unsigned char* buf = new unsigned char[BUF_SIZE];
@@ -2836,7 +2850,7 @@ bool readConfig(const char* cfg_file_name, RunConfig& cfg)
 	std::string baud_rate, port;
 	std::string service_port, is_open_service;
 	std::string alarm_msg;
-	std::string error_circle,error_scale;
+	std::string error_circle,error_scale,direction="-1";
 	while (getline(infile, s))
 	{
 		std::string tmp;
@@ -3007,6 +3021,11 @@ bool readConfig(const char* cfg_file_name, RunConfig& cfg)
 		{
 		getline(linestream, error_scale, ':');
 		cfg.error_scale = atof(error_scale.c_str());
+		}
+		else if (tmp == "direction")
+		{
+			getline(linestream, direction, ':');
+			cfg.direction = atoi(direction.c_str());
 		}
 	}
 	if (cfg.error_scale == 0)
