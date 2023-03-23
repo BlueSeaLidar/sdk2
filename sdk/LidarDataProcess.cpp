@@ -2517,7 +2517,7 @@ void *lidar_thread_proc_udp(void *param)
 	{
 		setup_lidar_udp(cfg->fd, cfg->lidar_ip, cfg->lidar_port,
 					cfg->unit_is_mm, cfg->with_confidence,
-					cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->alarm_msg, cfg->version);
+					cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->alarm_msg, cfg->direction, cfg->version);
 	}
 
 	unsigned char *buf = new unsigned char[BUF_SIZE];
