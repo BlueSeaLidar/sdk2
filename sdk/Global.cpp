@@ -644,7 +644,7 @@ int ParseAPI::parse_data_x(int len, unsigned char* buf,
 			}
 		}
 
-		if (hdr.N > MAX_POINTS || hdr.N < 5)
+		if (hdr.N > MAX_POINTS)
 		{
 			printf("points number %d seem not correct\n", hdr.N);
 			idx += 2;
