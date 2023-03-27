@@ -212,8 +212,6 @@ void DecTimestamp(uint32_t ts, uint32_t* ts2)
 
 static void PackFanData(FanSegment* seg, RawData& rdat)
 {
-	//RawData* dat = new RawData;
-	//if (!dat) { printf("out of memory\n"); return NULL; }
 	RawData* dat = &rdat;
 
 	dat->code = 0xfac7;
@@ -235,9 +233,10 @@ static void PackFanData(FanSegment* seg, RawData& rdat)
 		{
 			dat->points[count].confidence = seg->energy[i];
 			dat->points[count].distance = seg->dist[i] / 1000.0;
-			dat->points[count].angle = (seg->angle[i] + seg->hdr.beg_ang) * s;
+			//dat->points[count].angle = (seg->angle[i] + seg->hdr.beg_ang) * s;
+			float tmp = (seg->angle[i] + seg->hdr.beg_ang) ;
+			dat->points[count].angle = (tmp>=360*1000?tmp-360*1000:tmp) * s;
 		}
-
 		seg = seg->next;
 	}
 	//return dat;
@@ -413,7 +412,9 @@ bool GetData0xCF(const RawDataHdr2& hdr, unsigned char* pdat, int with_chk, RawD
 
 		sum += vv;
 		dat.points[i].distance = vv / 1000.0;
-		dat.points[i].angle = (hdr.angle + hdr.span * i / (double)hdr.N) * PI / 1800;
+		double tmp = hdr.angle + hdr.span * i / (double)hdr.N;
+		dat.points[i].angle = (tmp>=3600?tmp-3600:tmp) * PI / 1800;
+		printf("qwer(%lf %f %d)\n", tmp, dat.points[i].angle, hdr.N);
 	}
 
 	memcpy(&chk, pdat, 2);
