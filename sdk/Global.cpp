@@ -414,7 +414,7 @@ bool GetData0xCF(const RawDataHdr2& hdr, unsigned char* pdat, int with_chk, RawD
 		dat.points[i].distance = vv / 1000.0;
 		double tmp = hdr.angle + hdr.span * i / (double)hdr.N;
 		dat.points[i].angle = (tmp>=3600?tmp-3600:tmp) * PI / 1800;
-		printf("qwer(%lf %f %d)\n", tmp, dat.points[i].angle, hdr.N);
+		//printf("qwer(%lf %f %d)\n", tmp, dat.points[i].angle, hdr.N);
 	}
 
 	memcpy(&chk, pdat, 2);
@@ -579,7 +579,7 @@ bool GetData0x99(const RawDataHdr99& hdr, unsigned char* pdat, int with_chk, Raw
 
 int ParseAPI::parse_data_x(int len, unsigned char* buf,
 	int& span, int& is_mm, int& with_conf,
-	RawData& dat, int& consume, int with_chk, LidarMsgHdr& zone, FanSegment** fan_segs)
+	RawData& dat, int& consume, int with_chk, LidarMsgHdr& zone, FanSegment** fan_segs, char* model)
 {
 	int pack_format = 0xce;
 	int idx = 0;
@@ -605,6 +605,23 @@ int ParseAPI::parse_data_x(int len, unsigned char* buf,
 			if (flag & 0x20) span = 90;
 			with_conf = flag & 2;
 			is_mm = flag & 1;
+			//new uart lidar error  
+			if (strcmp(model, "LDS-50C-R") == 0 || strcmp(model, "LDS-E200-R") == 0)
+			{
+				flag = buf[idx + 5];
+				//if(flag2 !=64)
+				//	printf("%d\n", flag2);
+				if(flag & 0x1)
+					printf("bottom plate low voltage\n");
+				if (flag & 0x2)
+					printf("bottom plate high voltage\n");
+				if (flag & 0x4)
+					printf("abnormal motor head temperature\n");
+				if (flag & 0x8)
+					printf("motor head low voltage\n");
+				if (flag & 0x10)
+					printf("motor head high voltage\n");
+			}
 			idx += 8;
 		}
 
@@ -819,6 +836,8 @@ void UserAPI::fan_data_process(const RawData& raw, const char* output_file, Poin
 	tmp.N = data->N;
 	memcpy(tmp.ts, data->ts, sizeof(uint32_t) * 2);
 	memcpy(tmp.points, data->points, sizeof(DataPoint) * data->N);
+
+
 	//??§Ý??????
 	//((void(*)(int, void *))msgptr)(1, &tmp);
 

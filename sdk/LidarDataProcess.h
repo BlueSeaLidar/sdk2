@@ -68,7 +68,7 @@ int open_socket_port(RunConfig& cfg);
 HANDLE open_serial_port(RunConfig& cfg);
 
  int setup_lidar_vpc(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char* version);
- int setup_lidar_uart(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char* version);
+ int setup_lidar_uart(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char* version, char* model);
  bool uart_talk(HANDLE hCom, int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch);
  bool uart_talk2(HANDLE hCom, int mode, int sn, int len, const char* cmd, int nfetch, char* fetch);
  bool uart_talk3(HANDLE hCom, int mode, int sn, int len, const char* cmd, int result_len, void* result);
@@ -89,7 +89,7 @@ void *lidar_thread_proc_udp(void* param);
 void *lidar_thread_proc_uart(void *param);
 
 int setup_lidar_vpc(int hCom, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char *version);
-int setup_lidar_uart(int fd_uart, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char *version);
+int setup_lidar_uart(int fd_uart, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char *version,char*model);
 #endif
 
 

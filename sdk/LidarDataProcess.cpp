@@ -90,18 +90,18 @@ bool setup_lidar_udp(int fd_udp, const char* ip, int port, int unit_is_mm, int w
 	{
 		//resample == 0  非固定角分辨率不适用于网络包计算 
 		if (resample == 1 || (resample > 100 && resample <= 1500))
-			sprintf(buf, "LSRES:%04dH", resample);
+			sprintf(buf, "LSRES:%03dH", resample);
 		else
 			buf[0] = 0;
 
 		if (buf[0]) {
-			if (udp_talk_C_PACK(fd_udp, ip, port, 10, buf, 2, "OK", 0, NULL))
+			if (udp_talk_S_PACK(fd_udp, ip, port, strlen(buf), buf, result))
 			{
-				printf("set LiDAR resample %d OK\n", resample);
+				printf("%s set LiDAR resample %d %s\n", buf, resample, result);
 			}
 			else
 			{
-				printf("set LiDAR resample %d NG\n", resample);
+				printf("%s set LiDAR resample %d %s\n", buf, resample, result);
 			}
 		}
 
@@ -501,6 +501,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 	CallBack_Udp = send_cmd_udp;
 	ZoneAlarm* zonealarm = new ZoneAlarm(cfg->fd, true, cfg->lidar_ip, cfg->lidar_port, CallBack_Udp);
 	PointData tmp;
+	PointData* tmp1 = NULL, * tmp2 = NULL;
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	time_t tto = tv.tv_sec + 1;
@@ -637,8 +638,7 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 					{
 						is_pack = ParseAPI::parse_data_x(len, buf,
 							fan_span, cfg->unit_is_mm, cfg->with_confidence,
-							dat, consume, cfg->with_chk, zone, fan_segs);
-						//printf("%d\n", dat.angle);
+							dat, consume, cfg->with_chk, zone, fan_segs,"");
 					}
 					else
 					{
@@ -690,8 +690,31 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 
 								strcpy(tmp.ip, cfg->lidar_ip);
 								tmp.port = cfg->lidar_port;
-								((void(*)(int, void*))cfg->callback)(1, &tmp);
+								//printf("%d %d\n", dat.angle, dat.span);
+								if (dat.angle == 3420 && dat.span == 360)
+								{
+									if (tmp1 == NULL && tmp2 == NULL)
+									{
+										tmp1 = new PointData;
+										tmp2 = new PointData;
+									}
+									memcpy(tmp1, &tmp, sizeof(PointData));
+									tmp1->N = tmp1->N / 2;
+									memcpy(tmp2, tmp1, sizeof(PointData));
+									for (int i = 0; i < tmp1->N; i++)
+									{
+										memcpy(&tmp2->points[i], &tmp1->points[tmp1->N + i], sizeof(DataPoint));
+									}
+									((void(*)(int, void*))cfg->callback)(1, tmp1);
+									((void(*)(int, void*))cfg->callback)(1, tmp2);
+								}
+								else
+								{
+
+									((void(*)(int, void*))cfg->callback)(1, &tmp);	
+								}
 								memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
+								
 
 
 							}
@@ -844,6 +867,11 @@ DWORD  WINAPI lidar_thread_proc_udp(void* param)
 	CloseHandle((void*)cfg->fd);
 	WSACleanup();
 	delete[]buf;
+	if (tmp1!=NULL&& tmp2 != NULL)
+	{
+		delete tmp1;
+		delete tmp2;
+	}
 	return NULL;
 
 }
@@ -870,7 +898,7 @@ bool uart_talk(HANDLE hCom, int n, const char* cmd, int nhdr, const char* hdr_st
 		{
 			if (nfetch > 0)
 			{
-				if (strcmp(cmd, "LXVERH") == 0 || strcmp(cmd, "LUUIDH") == 0)
+				if (strcmp(cmd, "LXVERH") == 0 || strcmp(cmd, "LUUIDH") == 0||strcmp(cmd, "LTYPEH") == 0)
 				{
 					memcpy(fetch, buf + i + nhdr, nfetch);
 					fetch[nfetch] = 0;
@@ -1049,7 +1077,7 @@ void send_cmd_uart(int hCom, int mode, int sn, int len, const char* cmd)
 	WriteFile((HANDLE)hCom, buffer, len2, &nr, NULL);
 }
 
-int setup_lidar_uart(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char* version)
+int setup_lidar_uart(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char* version, char* model)
 {
 
 	char buf[32];
@@ -1073,6 +1101,20 @@ int setup_lidar_uart(HANDLE hCom, int unit_is_mm, int with_confidence, int resam
 		{
 			memcpy(version, buf, 12);
 			printf("set LiDAR LXVERH  %s\n", version);
+			break;
+		}
+	}
+	for (int i = 0; i < index; i++)
+	{
+		if (uart_talk(hCom, 6, "LTYPEH", 8, "TYPE ID:", 16, buf))
+		{
+			for (int j = 0; j < 16; j++)
+			{
+				if (buf[j] == '\r')
+					break;
+				model[j] = buf[j];
+			}
+			printf("set LiDAR LTYPEH  %s\n", model);
 			break;
 		}
 	}
@@ -1208,8 +1250,7 @@ int setup_lidar_vpc(HANDLE hCom, int unit_is_mm, int with_confidence, int resamp
 		cmd[0] = 0;
 
 	if (cmd[0]) {
-
-		if (uart_talk2(hCom, 0x0043, rand(), 10, cmd, 3, buf))
+		if (uart_talk3(hCom, 0x0053, rand(), sizeof(cmd), cmd, 3, buf))
 		{
 			printf("set LiDAR resample to %d,result:%s\n", resample, buf);
 		}
@@ -1328,13 +1369,17 @@ DWORD  WINAPI lidar_thread_proc_uart(void* param)
 	*fan_segs = NULL;
 	std::vector<RawData*> whole_datas;
 	int error_num = 0;
-
+	char model[16] = { 0 };
 	if (strcmp(cfg->type, "uart") == 0)
-		setup_lidar_uart((void*)cfg->fd, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
+		setup_lidar_uart((void*)cfg->fd, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version,model);
 	else
 		setup_lidar_vpc((void*)cfg->fd, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
 
 	INFO_PR("\033[1;32m----> All params set OK ! Start parser data.\033[0m\n");
+
+
+
+	//printf("LTYPEH  %s\n", model);
 	/*
 	 * 4, read and parser data
 	 */
@@ -1400,7 +1445,7 @@ DWORD  WINAPI lidar_thread_proc_uart(void* param)
 				{
 					is_pack = ParseAPI::parse_data_x(buf_len, buf,
 						fan_span, cfg->unit_is_mm, cfg->with_confidence,
-						dat, consume, cfg->with_chk, zone, fan_segs);
+						dat, consume, cfg->with_chk, zone, fan_segs,model);
 				}
 				else
 				{
@@ -1858,9 +1903,10 @@ void *lidar_thread_proc_uart(void *param)
 	*fan_segs = NULL;
 	std::vector<RawData*> whole_datas;
 	int error_num = 0;
+	char model[16] = { 0 };
 	ZoneAlarm *zonealarm = new ZoneAlarm(cfg->fd, false, (void *)CallBack_Uart);
 	if (strcmp(cfg->type, "uart") == 0)
-		setup_lidar_uart(cfg->fd, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
+		setup_lidar_uart(cfg->fd, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version, model);
 	else
 		setup_lidar_vpc(cfg->fd, cfg->unit_is_mm, cfg->with_confidence, cfg->resample, cfg->with_deshadow, cfg->with_smooth, cfg->rpm, cfg->version);
 	INFO_PR("\033[1;32m----> All params set OK ! Start parser data.\033[0m\n");
@@ -1960,7 +2006,7 @@ void *lidar_thread_proc_uart(void *param)
 				{
 					is_pack = ParseAPI::parse_data_x(buf_len, buf,
 										   fan_span, cfg->unit_is_mm, cfg->with_confidence,
-										   dat, consume, cfg->with_chk, zone,fan_segs);
+										   dat, consume, cfg->with_chk, zone,fan_segs,model);
 					//printf("%d %s %d\n", __LINE__, __FUNCTION__, is_pack);
 				}
 				else
@@ -2223,8 +2269,7 @@ int setup_lidar_vpc(int hCom, int unit_is_mm, int with_confidence, int resample,
 
 	if (cmd[0])
 	{
-
-		if (uart_talk2(hCom, 0x0043, rand(), 10, cmd, 3, buf))
+		if (uart_talk3(hCom, 0x0053, rand(), sizeof(cmd), cmd, 3, buf))
 		{
 			printf("set LiDAR resample to %d,result:%s\n", resample, buf);
 		}
@@ -2245,7 +2290,7 @@ int setup_lidar_vpc(int hCom, int unit_is_mm, int with_confidence, int resample,
 	}
 	return 0;
 }
-int setup_lidar_uart(int fd_uart, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char *version)
+int setup_lidar_uart(int fd_uart, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char *version,char *model)
 {
 	char buf[32];
 	int index = 3;
@@ -2269,6 +2314,20 @@ int setup_lidar_uart(int fd_uart, int unit_is_mm, int with_confidence, int resam
 		{
 			memcpy(version, buf, 12);
 			printf("set LiDAR LXVERH  %s\n", version);
+			break;
+		}
+	}
+	for (int i = 0; i < index; i++)
+	{
+		if (uart_talk(fd_uart, 6, "LTYPEH", 8, "TYPE ID:", 16, buf))
+		{
+			for (int j = 0; j < 16; j++)
+			{
+				if (buf[j] == '\r')
+					break;
+				model[j] = buf[j];
+			}
+			printf("set LiDAR LTYPEH  %s\n", model);
 			break;
 		}
 	}
@@ -2486,6 +2545,7 @@ void *lidar_thread_proc_udp(void *param)
 	bool timeprint = false;
 	RunConfig *cfg = (RunConfig *)param;
 	PointData tmp;
+	PointData* tmp1 = NULL, * tmp2 = NULL;
 	memset(&tmp, 0, sizeof(PointData));
 	int zoneFlag = 0; //读写防区标志位    0为正常运行  1为读  2为写
 	int zoneSN = rand();
@@ -2642,7 +2702,7 @@ void *lidar_thread_proc_udp(void *param)
 						// printf("%.02x %.02x %.02x %.02x\n ",buf[0],buf[1],buf[2],buf[3]);
 						is_pack = ParseAPI::parse_data_x(len, buf,
 											   fan_span, cfg->unit_is_mm, cfg->with_confidence,
-											   dat, consume, cfg->with_chk, zone,fan_segs);
+											   dat, consume, cfg->with_chk, zone,fan_segs,"");
 					}
 					else
 					{
@@ -2695,7 +2755,28 @@ void *lidar_thread_proc_udp(void *param)
 
 								strcpy(tmp.ip, cfg->lidar_ip);
 								tmp.port = cfg->lidar_port;
-								((void (*)(int, void *))cfg->callback)(1, &tmp);
+								if (dat.angle == 3420 && dat.span == 360)
+								{
+									if (tmp1 == NULL && tmp2 == NULL)
+									{
+										tmp1 = new PointData;
+										tmp2 = new PointData;
+									}
+									memcpy(tmp1, &tmp, sizeof(PointData));
+									tmp1->N = tmp1->N / 2;
+									memcpy(tmp2, tmp1, sizeof(PointData));
+									for (int i = 0; i < tmp1->N; i++)
+									{
+										memcpy(&tmp2->points[i], &tmp1->points[tmp1->N + i], sizeof(DataPoint));
+									}
+									((void(*)(int, void*))cfg->callback)(1, tmp1);
+									((void(*)(int, void*))cfg->callback)(1, tmp2);
+								}
+								else
+								{
+
+									((void(*)(int, void*))cfg->callback)(1, &tmp);
+								}
 								memcpy(&cfg->pointdata, &tmp, sizeof(PointData));
 							}
 						}
@@ -2825,6 +2906,11 @@ void *lidar_thread_proc_udp(void *param)
 		}
 	}
 	close(cfg->fd);
+	if (tmp1 != NULL && tmp2 != NULL)
+	{
+		delete tmp1;
+		delete tmp2;
+	}
 	delete buf;
 	return NULL;
 }

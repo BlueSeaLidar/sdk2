@@ -13,7 +13,7 @@ namespace BaseAPI {
 namespace ParseAPI {
     int parse_data_x(int len, unsigned char* buf,
         int& span, int& is_mm, int& with_conf,
-        RawData& dat, int& consume, int with_chk, LidarMsgHdr& zone, FanSegment** fan_segs);
+        RawData& dat, int& consume, int with_chk, LidarMsgHdr& zone, FanSegment** fan_segs,char*model);
     bool parse_data(int len, unsigned char* buf,
         int& span, int& is_mm, int& with_conf,
         RawData& dat, int& consume, int with_chk);

@@ -146,10 +146,10 @@ struct PointData
 	char ip[16];
 	int port;
 	unsigned short N;			//CN:扇区内测距点数								EN:The number of ranging points in the sector
-	DataPoint points[10000];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
 	uint32_t ts[2];				//CN:时间戳(秒和微秒)							EN:timestamps(Second and microseconds )
+	DataPoint points[10000];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
 };
-//心跳包
+//报警包
 struct LidarMsgHdr
 {
 	char sign[4];  	// must be "LMSG"
