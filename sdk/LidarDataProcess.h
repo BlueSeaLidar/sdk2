@@ -1,108 +1,125 @@
-#ifndef __LIDARDATAPROCESS_H__
+ï»¿#ifndef __LIDARDATAPROCESS_H__
 #define  __LIDARDATAPROCESS_H__
 #include"Global.h"
-#include"service/ZoneAlarm.h"
+#include"service/LidarWebService.h"
 
 #ifdef _WIN32
 
 #elif __unix__ 
 #include <sys/time.h>
 #endif
-typedef void (*printfMsg)(int, void*);
-typedef void (*send_cmd_uart_ptr)(int hCom, int mode, int sn, int len, const char* cmd);
-typedef void (*send_cmd_udp_ptr)(int fd_udp, const char* dev_ip, int dev_port, int cmd, int sn, int len, const void* snd_buf, bool isSaveLog);
+typedef void (*printfMsg)(int, void*,int);
 
-
-//ÔËĞĞÅäÖÃ  È«¾Ö±äÁ¿
-struct RunConfig
+enum ACTION
 {
-	char type[16];			//CN:´«ÊäÀàĞÍ							EN:transmission type	for example:"uart"   or   "udp"  "vpc"
-	char port[16];			//CN:´®¿ÚÃû³Æ							EN:uart name
-	int baud_rate;			//CN:²¨ÌØÂÊ								EN:baud rate
-	int lidar_port;			//CN:Ä¿±ê(À×´ï)¶Ë¿ÚºÅ					EN:target(Lidar) port
-	char lidar_ip[16];		//CN:À×´ïµÄIPµØÖ·						EN:Lidar IP address
-	int local_port;			//CN:±¾µØ¶Ë¿ÚºÅ						    EN:local port
-	int unit_is_mm;			//CN:Êı¾İµ¥Î»(1.mm 0 cm)                EN:unit£¨1.mm  0.cm£©
-	int with_confidence;	//CN:ÊÇ·ñ´øÇ¿¶È£¬ 0·ñ  1ÊÇ   			EN:With or without strength,0 false  1 true
-	int resample;			//CN:·Ö±æÂÊ								EN:Resolution
-	int with_deshadow;		//CN:È¥ÍÏµã(0£º¹Ø±Õ£¬1£º¿ªÆô)			EN:go to drag point (0: off, 1: on)
-	int with_smooth;		//CN:Êı¾İÆ½»¬(0£º¹Ø±Õ£¬ 1£º¿ªÆô)		EN:Data smoothing (0: off, 1: on)
-	int with_chk;			//CN:Êı¾İĞ£Ñé(0:¹Ø±Õ 1:´ò¿ª)			EN:Data check (0: close 1: open)
-	int data_bytes;			//CN:Êı¾İ´ò°üÄ£Ê½£¬2£º2×Ö½Ú£¬ 3£º3×Ö½Ú  EN:Data packing mode, 2: 2 bytes, 3: 3 bytes Special instructions: 2 for the old model, 3 for the new model
-	int rpm;				//CN:×ªËÙ								EN:Rotating speed
-	int output_scan;		//CN:ÊÇ·ñ´òÓ¡ (0£º²»´òÓ¡   1£º´òÓ¡ )	EN:Whether to print (0: not print 1: print)
-	int output_360;			//CN:ÉÈĞÎ´òÓ¡(0:²¿·ÖÉÈĞÎ´òÓ¡  1£ºÍê³ÉµÄ)EN:Fan printing (0: Partial fan printing 1: Completed)
-	int from_zero;			//CN:ÊÇ·ñ´Ó0¶È½Ç¿ªÊ¼Í³¼Æ				EN:Whether to start counting from 0 degree angle
-	int collect_angle;		//CN:Í³¼ÆÆğÊ¼½Ç¶ÈµÄĞŞÕıÖµ				EN:Correction value of statistical starting angle
-	char output_file[256];	//CN:Êı¾İ±£´æÎÄ¼ş¾ø¶ÔÂ·¾¶				EN:Data save file absolute path
-	int is_group_listener;	//CN:0Õı³£Ä£Ê½   1¼àÌıÄ£Ê½   2·¢ËÍÄ£Ê½	EN:0 Normal mode 1 Listening mode 2 Sending mode
-	char group_ip[16];		//CN:×é²¥IP								EN:Multicast IP
-	// control
-	bool should_quit;		//CN:ÍË³ö±êÖ¾Î»							EN:quit flag	
-	int alarm_msg;			//CN:ÊÇ·ñ´ò¿ª·ÀÇø±¨¾¯					EN:Whether to turn on the zone alarm
-	int error_circle;		//CN:¼ì²â³¤¶ÈÎª0µÄÈ¦Êı					EN:Detect the number of turns with a length of 0
-	float error_scale;		//CN:¼ì²â³¤¶ÈÎª0µÄ±ÈÀı					EN:Detect the Scale of turns with a length of 0
-	int direction;			//CN:À×´ïĞı×ª·½Ïò						EN:lidar Rotation direction
-	char version[64];		//CN:Ó²¼ş°æ±¾ºÅ							EN:Hardware version
-#ifdef __linux
-	int msgid;//ÏûÏ¢¶ÓÁĞID
-	pthread_t thread;		//CN:ºÍÀ×´ïÍ¨ĞÅ×ÓÏß³Ì					EN:Sub-thread: responsible for communicating with lidar
-#elif  _WIN32
-	HANDLE thread;
-	HANDLE hStartEvent;
-#endif 
-	int fd;//¾ä±ú
-	printfMsg  callback;	//CN:ĞÅÏ¢´òÓ¡»Øµ÷º¯Êı					EN:Information printing callback function
-	PointData  pointdata;	//CN:µ¥Ö¡µãÔÆÊı¾İ						EN:Single frame point cloud data
-	LidarMsgHdr zone;		//CN:±¨¾¯ĞÅÏ¢Êı¾İ						EN:Alarm information data
-	long thread_ID[3];		//CN:Ö÷Ïß³Ì£¬Êı¾İ×ÓÏß³Ì£¬·şÎñ×ÓÏß³ÌID	EN:main thread, data sub-thread, service sub-thread ID
-	int service_port;		//CN:±¾µØ·şÎñÆôÓÃ¶Ë¿Ú					EN:Local service enable port
-	int is_open_service;	//CN:ÊÇ·ñÆôÓÃ±¾µØ·şÎñ					EN:Enable local service
-	// E100 scan filter
-	ShadowsFilterParam shadows_filter;
-	MedianFilterParam median_filter;
+	OFFLINE=0,
+	ONLINE,
+	RUN,
+	CONTROL,
+	GETALLPARAMS,
+	SETPARAM,
+	READZONE,
+	WRITEZONE,
+	FINISH
+};
+enum STATE
+{
+	INIT=0,
+	WORK,
+	WORK_AND_WEB,
+	STOP_ALL
 };
 
-#ifdef _WIN32
-int open_socket_port(RunConfig& cfg);
-HANDLE open_serial_port(RunConfig& cfg);
+struct Responsive
+{
+	int mode;//0x0043  0x0053  0x4753
+	int send_len;
+	char send_cmd[1024];
+	short rand;
+	long timestamp;
+};
 
- int setup_lidar_vpc(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char* version);
- int setup_lidar_uart(HANDLE hCom, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char* version, char* model);
- bool uart_talk(HANDLE hCom, int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch);
- bool uart_talk2(HANDLE hCom, int mode, int sn, int len, const char* cmd, int nfetch, char* fetch);
- bool uart_talk3(HANDLE hCom, int mode, int sn, int len, const char* cmd, int result_len, void* result);
-DWORD  WINAPI lidar_thread_proc_udp(void* param);
-DWORD  WINAPI  lidar_thread_proc_uart(void* param);
-#endif
+struct RunScript
+{
+	//connect
+	char type[16];//"uart"   or   "udp"  "vpc"
+	char connectArg[16];//ip/com
+	int connectArg2;//port/baud
+	int local_port;
+	//data
+	char logPath[256];
+    int data_bytes;
+	int from_zero;
+	int with_chk;			//CN:æ•°æ®æ ¡éªŒ(0:å…³é—­ 1:æ‰“å¼€)			EN:Data check (0: close 1: open)
+	int error_circle;		//CN:æ£€æµ‹é•¿åº¦ä¸º0çš„åœˆæ•°					EN:Detect the number of turns with a length of 0
+	double error_scale;		//CN:æ£€æµ‹é•¿åº¦ä¸º0çš„æ¯”ä¾‹					EN:Detect the Scale of turns with a length of 0
+	int output_360;			//CN:æ‰‡å½¢æ‰“å°(0:éƒ¨åˆ†æ‰‡å½¢æ‰“å°  1ï¼šå®Œæˆçš„)EN:Fan printing (0: Partial fan printing 1: Completed)
+	int service_port;		//CN:æœ¬åœ°æœåŠ¡å¯ç”¨ç«¯å£					EN:Local service enable port
+	int is_open_service;	//CN:æ˜¯å¦å¯ç”¨æœ¬åœ°æœåŠ¡					EN:Enable local service
+	//udp
+	int is_group_listener;	//CN:0æ­£å¸¸æ¨¡å¼   1ç›‘å¬æ¨¡å¼   2å‘é€æ¨¡å¼	EN:0 Normal mode 1 Listening mode 2 Sending mode
+	char group_ip[16];		//CN:ç»„æ’­IP	
 
-#ifdef __unix__
-extern "C"  int change_baud(int fd, int baud);
-int open_serial_port(RunConfig &cfg);
-int open_socket_port(RunConfig &cfg);
-bool uart_talk(int fd, int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch);
-bool uart_talk2(int hCom, int mode, int sn, int len, const char* cmd, int nfetch, char* fetch);
-bool uart_talk3(int  hCom, int mode, int sn, int len, const char* cmd, int result_len,void *result);
-void send_cmd_uart(int fd, int mode, int sn, int len, const char* cmd);
-int strip(const char *s, char *buf);
-void *lidar_thread_proc_udp(void* param);
-void *lidar_thread_proc_uart(void *param);
+	// E120 scan filter
+	ShadowsFilterParam shadows_filter;
+	MedianFilterParam median_filter;
+	//get
+	int uuid;
+	int model;
+	int version;
 
-int setup_lidar_vpc(int hCom, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char *version);
-int setup_lidar_uart(int fd_uart, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, char *version,char*model);
-#endif
+	//set common
+	int rpm;
+	int resample_res;
 
+	int with_smooth;
+	int with_deshadow;
 
+	int with_start;
+	//set uart
+	int with_confidence;
+	int unit_is_mm;
+	//set udp  vpc
+	int alarm_msg;
+	int direction;
+	int ats;  //1udp  2vpc
+};
 
- bool setup_lidar_udp(int fd_udp, const char* ip, int port, int unit_is_mm, int with_confidence, int resample, int with_deshadow, int with_smooth, int init_rpm, int should_post, int direction,char* version);
- int setup_lidar_extre(std::string type, int fd_udp, const char* ip, int port, DevData& data);
- bool udp_talk_C_PACK(int fd_udp, const char* lidar_ip, int lidar_port, int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch);
- bool udp_talk_S_PACK(int fd_udp, const char* ip, int port, int n, const char* cmd, void* result);
- bool udp_talk_GS_PACK(int fd_udp, const char* ip, int port, int n, const char* cmd, void* result);
- void send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port, int cmd, int sn, int len, const void* snd_buf, bool savelog);
+//è¿è¡Œé…ç½® 
+struct RunConfig
+{	
+	int ID;
+	STATE state;	//-1 stop all 0 init   1 run work thread  2 run work and web thread 
 
- bool readConfig(const char* cfg_file_name, RunConfig& cfg);
- bool checkPointsLengthZero(PointData tmp, float scale);
-#endif
+	unsigned long thread_data;//DWORD == pthread_t
+	unsigned long thread_web;
+#endif 
+	LidarWebService *webservice;
+	int fd;//å¥æŸ„
+	printfMsg  callback;	//CN:ä¿¡æ¯æ‰“å°å›è°ƒå‡½æ•°					EN:Information printing callback function
+	UserData userdata;//å½“å‰å¸§
+	LidarMsgHdr zonemsg;//å½“å‰çš„é˜²åŒºä¿¡æ¯
+	EEpromV101 eepromv101;//å…¨å±€å˜é‡å‚æ•°
+	char hardwareVersion[32];//ç¡¬ä»¶ç‰ˆæœ¬å·
+	
+	ACTION action;//0 æ— æ“ä½œ   1.å¯åœæ§åˆ¶æŒ‡ä»¤  2.è·å–è®¾å¤‡å…¨å±€å‚æ•°  3.è®¾ç½®è®¾å¤‡å‚æ•°  4 è¯»å–é˜²åŒº   5 è®¾ç½®é˜²åŒº
+	//å½“å‰ä¼ å…¥çš„æŒ‡ä»¤
+	int mode;
+	int send_len;
+	char send_cmd[1024];
+	int recv_len;
+	char recv_cmd[1024];
+
+	RunScript  runscript;
+	
+};
+
+ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* version);
+ int setup_lidar_vpc(int hCom, RunScript* arg);
+
+ bool readConfig(const char* cfg_file_name, RunScript& cfg);
+ bool checkPointsLengthZero(UserData *tmp, float scale);
+ void* lidar_thread_proc_udp(void* param);
+ void* lidar_thread_proc_uart(void* param);
 
 

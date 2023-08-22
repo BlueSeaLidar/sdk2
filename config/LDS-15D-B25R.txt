@@ -4,7 +4,8 @@ type:uart
 connectArg:com7
 #linux
 #connectArg:/dev/ttyUSB0 
-connectArg2:921600
+#768000 921600 1000000
+connectArg2:768000
 #data
 data_bytes:3
 with_checksum:1
@@ -25,4 +26,3 @@ with_smooth:1
 with_deshadow:1
 resample_res:1
 rpm:-1
-

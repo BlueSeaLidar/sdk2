@@ -1,6 +1,8 @@
 ﻿#ifndef __ERROR_H_
 #define __ERROR_H_
 
+#include <stdarg.h>
+
 #define  SUCCESS   0   //成功
 #define  FAILTORUN   -1   //雷达没有正常运行
 //入参相关
@@ -45,5 +47,37 @@
 #define SET_ZONESECTION_FAILED -55 //设置激活的防区失败
 //net
 #define URL_ADDRESS_FAILED  -60//url地址不存在
+
+ 
+#define INFO_OUTPUT      0
+#define WARNING_OUTPUT   1
+#define DEBUG_OUTPUT     2
+#define ERROR_OUTPUT     3
+ 
+#define DEBUG_LEVEL      DEBUG_OUTPUT
+
+#define INFO_PRINT(info,...)  \
+do{ \
+    if(DEBUG_LEVEL>=INFO_OUTPUT){\
+        printf("Info %s,%s,%d:"info"",__FILE__,__FUNCTION__,__LINE__,##__VA_ARGS__);}\
+}while(0)
+ 
+#define WARNING_PRINT(info,...)  \
+do{ \
+    if(DEBUG_LEVEL>=WARNING_OUTPUT){\
+        printf("Warning %s,%s,%d:"info"",__FILE__,__FUNCTION__,__LINE__,##__VA_ARGS__);}\
+}while(0)
+ 
+#define DEBUG_PRINT(info,...)  \
+do{ \
+    if(DEBUG_LEVEL>=DEBUG_OUTPUT){\
+        printf("Debug %s,%s,%d:"info"",__FILE__,__FUNCTION__,__LINE__,##__VA_ARGS__);}\
+}while(0)
+ 
+#define ERROR_PRINT(info,...)  \
+do{ \
+    if(DEBUG_LEVEL>=ERROR_OUTPUT){\
+        printf("Error %s,%s,%d:"info"",__FILE__,__FUNCTION__,__LINE__,##__VA_ARGS__);}\
+}while(0)
 
 #endif

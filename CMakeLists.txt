@@ -37,7 +37,7 @@ ELSEIF (WIN32)
 #多线程
 set(CMAKE_CXX_FLAGS_DEBUG "/MT")
 #强制文件输出
-set(CMAKE_EXE_LINKER_FLAGS_DEBUG       "/FORCE")
+#set(CMAKE_EXE_LINKER_FLAGS_DEBUG       "/FORCE")
 ENDIF ()
 #指定生成debug模式
 set(CMAKE_CONFIGURATION_TYPES Debug)
@@ -52,7 +52,7 @@ file(GLOB_RECURSE HEADER_FILES  ${PROJECT_SOURCE_DIR}/sdk/*.h  ${PROJECT_SOURCE_
 
 IF (UNIX)
   #加载指定目录下需要删除的指定格式文件集
-  file(GLOB_RECURSE REMOVE_SOURCES  "${PROJECT_SOURCE_DIR}/sdk/service/LidarCheckService_win32.cpp" "${PROJECT_SOURCE_DIR}/sdk/service/ZoneAlarm_win32.cpp" "${PROJECT_SOURCE_DIR}/sdk/standard_interface_win32.cpp")
+  #file(GLOB_RECURSE REMOVE_SOURCES  "${PROJECT_SOURCE_DIR}/sdk/service/LidarCheckService_win32.cpp")
   #file(GLOB_RECURSE REMOVE_HEADERS  "${PROJECT_SOURCE_DIR}/sdk/win32/*")
   #获取最终编译需要的文件集
   list(REMOVE_ITEM SOURCE_FILES ${REMOVE_SOURCES})
@@ -65,7 +65,7 @@ IF (UNIX)
   target_link_libraries(demo m pthread )
 ELSEIF (WIN32)
   #同上
-  file(GLOB_RECURSE REMOVE_SOURCES  "${PROJECT_SOURCE_DIR}/sdk/service/LidarCheckService_linux.cpp" "${PROJECT_SOURCE_DIR}/sdk/service/ZoneAlarm_linux.cpp" "${PROJECT_SOURCE_DIR}/sdk/standard_interface_linux.cpp" "${PROJECT_SOURCE_DIR}/sdk/uart.c")
+  file(GLOB_RECURSE REMOVE_SOURCES  "${PROJECT_SOURCE_DIR}/sdk/uart.c")
   #file(GLOB_RECURSE REMOVE_HEADERS  "${PROJECT_SOURCE_DIR}/sdk/linux/*")
   
   list(REMOVE_ITEM SOURCE_FILES ${REMOVE_SOURCES})
@@ -76,4 +76,4 @@ ELSEIF (WIN32)
 ENDIF ()
 
 #make install   将可执行文件放到指定位置
-install(TARGETS demo RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/tools/)
+#install(TARGETS demo RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/tools/)

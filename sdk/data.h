@@ -25,58 +25,19 @@ extern "C"
 	#include"third_party/mongoose/mongoose.h"
 }
 
-
-#ifdef _WIN32
-#include<Windows.h>
-#define GetDevInfo_MSG WM_USER+100
-#define SetDevInfo_MSG WM_USER+101
-#define ctrl_MSG WM_USER+102
-#define Print_Point_MSG WM_USER+103
-#define Print_TimeStamp_MSG WM_USER+104
-#define Get_OnePoint_MSG WM_USER+105
-#define Get_ZONE_MSG WM_USER+106
-#define Get_ZoneSection_MSG WM_USER+107
-#define Set_ZONE_MSG WM_USER+110
-#define Set_ZoneSection_MSG WM_USER+111
-#elif __linux
-#include <unistd.h>
-enum msg_queue
-{
-	GetDevInfo_MSG=0,
-	SetDevInfo_MSG,
-	ctrl_MSG,
-	Print_Point_MSG,
-	Print_TimeStamp_MSG,
-	Get_ZONE_MSG,
-	Set_ZONE_MSG,
-	Set_ZoneSection_MSG
-};
-struct CMD
-{
-	msg_queue type2;
-	char str[1024];
-};
-
-typedef struct {
-    long type;
-	CMD  cmd;
-}USER_MSG;
-
-#endif
-
-
-
 #define PI 3.1415926535898
 
 #define MAX_LIDARS 8
-
-
+#define MAX_FANS  100
+#define MAX_POINTS 500
+#define MAX_FRAMEPOINTS 10000
+#define MAX_FRAMEIDX  1000000 
 #define HDR_SIZE 6
 #define HDR2_SIZE 8
 #define HDR3_SIZE 16 
 #define HDR7_SIZE 28 
 #define HDR99_SIZE 32 
-#define MAX_POINTS 500
+#define HDRAA_SIZE 48
 
 #define BUF_SIZE 8*1024
 #define ZONE_SIZE 1024
@@ -103,22 +64,7 @@ typedef struct {
 #define T_PACK 0x0054
 #define C_PACK 0x0043
 
-#define _TEST_    0     //test use
-//日志打印开关   debug  info
-#define _DEBUG_  1
-#define _INFO_   1
-#if  _DEBUG_ 
-#define DEBUG_PR(...) printf(__VA_ARGS__)
-#else
-#define DEBUG_PR(...)
-#endif
-
-#if  _INFO_ 
-#define INFO_PR(...) printf(__VA_ARGS__)
-#else
-#define INFO_PR(...)
-#endif
-
+#define CHECKSERVICE  6789  //检测本地雷达列表端口号
 #define getbit(x,y)   ((x) >> (y)&1)
 #define setbit(x,y) x|=(1<<y)         //将X的第Y位置1
 #define clrbit(x,y) x&=~(1<<y)            //将X的第Y位清0
@@ -140,14 +86,52 @@ struct DataPoint
 
 	unsigned char confidence;	//CN:强度		EN:strength
 };
-//客户使用的雷达实时数据
-struct PointData
+struct RawData
 {
-	char ip[16];
-	int port;
+	unsigned short code;		//CN:帧头										EN:data frame header
+	unsigned short N;			//CN:扇区内测距点数								EN:The number of ranging points in the sector
+	unsigned short angle;		//CN:当前扇区的起始角度							EN:The starting angle of the current sector *10
+	unsigned short span;		//CN:扇区的总角度(扇区终止角度-扇区起始角度)	EN:The total angle of the sector (sector end angle - sector start angle)
+	unsigned short fbase;		//CN:扇区起始偏差 （NULL）						EN:Sector start offset（NULL）
+	unsigned short first;		//CN:第一个点角度  (NULL)						EN:first point angle（NULL）
+	unsigned short last;		//CN:最后一个点角度(NULL)						EN:last point angle（NULL）
+	unsigned short fend;		//CN:扇区终止偏差(NULL)							EN:Sector end offset（NULL）
+	uint32_t flags;	//消息类型
+	// short ros_angle;	// 0.1 degree
+	DataPoint points[MAX_POINTS];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
+	uint32_t ts[2];				//CN:时间戳(秒和毫秒)							EN:timestamps(Second and millisecond )
+
+};
+
+enum DataType
+{
+	SPANDATA=0,
+	FRAMEDATA
+};
+struct SpanData
+{
+	//unsigned short N;
+	RawData data;
+};
+struct FrameData
+{
 	unsigned short N;			//CN:扇区内测距点数								EN:The number of ranging points in the sector
 	uint32_t ts[2];				//CN:时间戳(秒和微秒)							EN:timestamps(Second and microseconds )
-	DataPoint points[10000];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
+	DataPoint data[MAX_FRAMEPOINTS];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
+};
+//最终返回的客户使用的雷达实时数据
+struct UserData
+{
+	DataType type;
+	int idx;//0表示扇区序号  1表示帧序号  超过10000000(1千万)帧回拨
+	char connectArg1[16];     //ip/com
+	int connectArg2;		//port /baud
+	union 
+	{
+		SpanData spandata;
+		FrameData framedata;
+	}data;
+	
 };
 //报警包
 struct LidarMsgHdr
@@ -227,7 +211,7 @@ struct RawDataHdr7 {
 };
 
 
-struct FanSegment
+struct FanSegment_C7
 {
 	RawDataHdr7 hdr;			//CN：Hdr7结构体		EN：Hdr7structure 
 
@@ -235,9 +219,31 @@ struct FanSegment
 	uint16_t angle[MAX_POINTS]; //CN:角度				EN:angle
 	uint8_t energy[MAX_POINTS]; //CN:能量强度			EN:energy intensity
 
-	struct FanSegment* next;	// CN:下个扇区指针		EN:next sector pointer 
+	struct FanSegment_C7* next;	// CN:下个扇区指针		EN:next sector pointer 
 };
+struct RawDataHdrAA {
+	uint16_t code; // 0xFAAA
+	uint16_t N;
+	uint16_t whole_fan;
+	uint16_t ofset;
+	uint32_t beg_ang;
+	uint32_t end_ang;
+	uint32_t flags;
+	uint32_t second;
+	uint32_t nano_sec;
+	uint32_t dev_id;
+	uint32_t reserved[4];
+};
+struct FanSegment_AA
+{
+	RawDataHdrAA hdr;			//CN：HdrAA结构体		EN：Hdr7structure
 
+	uint16_t dist[MAX_POINTS];	//CN:距离				EN:distance
+	uint16_t angle[MAX_POINTS]; //CN:角度				EN:angle
+	uint8_t energy[MAX_POINTS]; //CN:能量强度			EN:energy intensity
+
+	struct FanSegment_AA* next;	// CN:下个扇区指针		EN:next sector pointer
+};
 struct RawDataHdr99 {
 	uint16_t code;			//CN:帧头，固定为0x99FA			EN:Frame header, fixed at 0x99FA
 	uint16_t N;				//CN:扇区内这个分包的测距点数	EN:The number of ranging points for this subpacket in the sector
@@ -247,24 +253,6 @@ struct RawDataHdr99 {
 	uint32_t timestamp;		//CN:时间戳						EN:timestamp 
 	uint32_t dev_no;		//CN:设备编号					EN:device ID
 	uint32_t reserved[3];	//CN:保留位						EN:reserved
-};
-
-
-//Special instructions : fbase, first, last, fend are empty by default, only special models have data
-struct RawData
-{
-	unsigned short code;		//CN:帧头										EN:data frame header
-	unsigned short N;			//CN:扇区内测距点数								EN:The number of ranging points in the sector
-	unsigned short angle;		//CN:当前扇区的起始角度							EN:The starting angle of the current sector *10
-	unsigned short span;		//CN:扇区的总角度(扇区终止角度-扇区起始角度)	EN:The total angle of the sector (sector end angle - sector start angle)
-	unsigned short fbase;		//CN:扇区起始偏差 （NULL）						EN:Sector start offset（NULL）
-	unsigned short first;		//CN:第一个点角度  (NULL)						EN:first point angle（NULL）
-	unsigned short last;		//CN:最后一个点角度(NULL)						EN:last point angle（NULL）
-	unsigned short fend;		//CN:扇区终止偏差(NULL)							EN:Sector end offset（NULL）
-	// short ros_angle;	// 0.1 degree
-	DataPoint points[MAX_POINTS];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
-	uint32_t ts[2];				//CN:时间戳(秒和毫秒)							EN:timestamps(Second and millisecond )
-
 };
 
 
@@ -299,50 +287,51 @@ struct  DevTimestamp
 	uint32_t timestamp;
 	uint32_t delay;
 };
+
 struct EEpromV101
 {
 	char label[4];			// "EPRM"
-	uint16_t pp_ver; // paramter protocol version
-	uint16_t size;			// total size of this structure
+    uint16_t pp_ver; // 协议版本
+    uint16_t size;			// 结构大小
 
 	//uint32_t version;		// firmware version
 
 	// device
-	uint8_t dev_sn[20];
-	uint8_t dev_type[16];
-	uint32_t dev_id;		// identiy
+    uint8_t dev_sn[20];//sn号
+    uint8_t dev_type[16];//型号
+    uint32_t dev_id;		// 编号
 
 	// network
 	uint8_t IPv4[4];
 	uint8_t mask[4];
 	uint8_t gateway[4];
-	uint8_t srv_ip[4];
-	uint16_t srv_port;
-	uint16_t local_port;
+    uint8_t srv_ip[4];//上传IP
+    uint16_t srv_port;//上传端口
+    uint16_t local_port;//本地端口
 
-	//
 	uint16_t RPM;
-	uint16_t RPM_pulse;
-	uint8_t fir_filter;
-	uint8_t cir;
+    uint16_t RPM_pulse;//电机启动参数
+    uint8_t fir_filter;//防区报警点数标准
+    uint8_t cir;//防区报警圈数过滤标准
 	uint16_t with_resample;
 
-	uint8_t auto_start;
-	uint8_t target_fixed;
-	uint8_t with_smooth;
-	uint8_t with_filter;
+    uint8_t auto_start;//开机自动旋转
+    uint8_t target_fixed;//固定上传
+    uint8_t with_smooth;//数据平滑
+    uint8_t with_filter;//去拖点
 
-	//
-	uint8_t ranger_bias[8];
-	uint32_t net_watchdog;
+    //
+    uint8_t ranger_bias[8];//零偏角错误修正
+    uint32_t net_watchdog;//看门狗
 
-	uint32_t pnp_flags;
-	uint16_t deshadow;
-	uint8_t zone_acted;
-	uint8_t should_post;
+    uint32_t pnp_flags;//PNP/NPN
+    uint16_t deshadow;//平滑系数
+    uint8_t zone_acted;//激活防区
+    uint8_t should_post;//上传方式   0 无数据 1仅数据 2报警 3报警+数据
 
-	uint8_t functions_map[16];
-	uint8_t reserved[36];
+    uint8_t functions_map[16];//I/O输入输出口
+    uint8_t reserved[36];
+
 };
 //CN:UDP设置雷达参数时接收使用报文头	EN:UDP uses the header when setting lidar parameters
 struct CmdHeader
@@ -353,6 +342,151 @@ struct CmdHeader
 	unsigned short len;	//CN:命令长度									EN:command length
 };
 
+//串口雷达状态包(STXXXXED) 中间四个字节
+struct UartState
+{
+    //byte1
+    bool unit_mm;//0 cm 1 mm
+    bool with_conf;//0 close 1 open
+    bool with_smooth;
+    bool with_fitter;
+    bool span_9;
+    bool span_18;
+    bool span_other;
+    bool resampele;//重采样
+    //byte2
+
+    bool moter_turn;//0正向 1反向
+    bool span_8;
+    bool span_16;
+    //byte3
+    bool byte3_error0;
+    bool byte3_error1;
+    bool byte3_error2;
+    bool byte3_error3;
+    //byte4
+    bool byte4_error0;
+    bool byte4_error1;
+    bool byte4_error2;
+    bool byte4_error3;
+    bool byte4_error4;
+    bool byte4_error5;
+    bool byte4_error6;
+    bool byte4_error7;
+};
+struct DevInfo
+{
+	//转速	2个字节
+	unsigned short rpm;
+	//启动脉冲个数	2个字节
+	unsigned short pulse;
+	//保留	4个字节
+	char sign[4];
+	//版本号	2个字节
+	unsigned short version;
+	//ip地址	4个 字节
+	unsigned char ip[4];
+	//子网掩码	4个字节
+	unsigned char mask[4];
+	//网关地址	4个字节
+	unsigned char gateway[4];
+	//默认目标IP	4个字节
+	unsigned char remote_ip[4];
+	//默认目标udp端口号	2个字节
+	unsigned short remote_udp;
+	//默认UDP对外服务端口号	2个字节
+	unsigned short port;
+	//物体分辨率	1个字节
+	unsigned char fir;
+	//偏置	6个字节
+	char zero_offset[6];
+	//机器序号	20个字节
+	char dev_sn[20];
+	//机器类型	11个字节
+	char dev_type[11];
+	//IO类型选择	1个字节
+	char io_type;
+	//响应圈数	1个字节 
+	unsigned char cir;
+	//IO功能引脚配置	10个字节
+	unsigned char io_mux[10];
+};
+struct DevInfo2
+{
+	// 标签	4个字节
+	char sign[4];
+	// 机器序号	20个字节
+	char dev_sn[20];
+	// 机器类型	11个字节
+	char dev_type[12];
+	//版本号	2个字节
+	unsigned short version;
+	// ip地址	4个 字节
+	unsigned char ip[4];
+	// 子网掩码	4个字节
+	unsigned char mask[4];
+	// 网关地址	4个字节
+	unsigned char gateway[4];
+	// 默认目标IP	4个字节
+	unsigned char remote_ip[4];
+	//默认目标udp端口号	2个字节
+	unsigned short remote_udp;
+	// 默认UDP对外服务端口号	2个字节
+	unsigned short port;
+	//保留	2个字节
+	char reserver[2];
+};
 
 
+struct DevInfoV101
+{
+	char sign[4];  // must be "LiDA"
+	uint32_t proto_version; // Ð­Òé°æ±¾ V101
+	uint32_t timestamp[2];// Ê±¼ä´Á
+	char dev_sn[20];
+	char dev_type[16];
+	uint32_t version;
+	uint32_t dev_id; //Éè±¸±àºÅ
+	uint8_t ip[4]; //Éè±¸µØÖ·
+	uint8_t mask[4]; //
+	uint8_t gateway[4];
+	uint8_t remote_ip[4]; // ·þÎñÆ÷µØÖ·
+
+	uint16_t remote_udp; //·þÎñÆ÷¶Ë¿Ú
+	uint16_t port; // lidar service udp port
+	uint16_t status;// Éè±¸×´Ì¬
+	uint16_t rpm; // µ±Ç°×ªËÙ
+
+	uint16_t freq; // µ±Ç°×ªËÙ
+	uint8_t ranger_version[2];
+	uint16_t CpuTemp;
+	uint16_t InputVolt;
+	uint8_t alarm[16]; // ±¨¾¯ÐÅÏ¢
+	uint32_t crc;
+};
+
+//#pragma pack(pop)
+
+enum ConnType
+{
+	TYPE_COM,
+	TYPE_UDP_V1,
+	TYPE_UDP_V2,
+	TYPE_UDP_V101
+};
+
+struct DevConnInfo
+{
+	ConnType type;
+	char com_port[128];
+	int com_speed;
+	char conn_ip[32];
+	int conn_port;
+	char timeStr[16];  //HH-MM-SS
+	union {
+		DevInfo v1;// info;
+		DevInfoV101 v101;// info101;
+		DevInfo2 v2;
+	} info;
+};
 #endif

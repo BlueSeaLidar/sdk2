@@ -68,10 +68,9 @@ function getPointsData() {
             zone_actived = jsondatas.zone_actived;
             ShowZoneMSG(zone_flag, zone_events, zone_actived);
         }
-      $('#timestamp_s').attr("value", jsondatas.ts[0]);
-      $('#timestamp_us').attr("value", jsondatas.ts[1]);
     }
-    //防区参数获取
+    $('#timestamp_s').attr("value", jsondatas.ts[0]);
+    $('#timestamp_us').attr("value", jsondatas.ts[1]);
 
     myChart.setOption(option, false);
 

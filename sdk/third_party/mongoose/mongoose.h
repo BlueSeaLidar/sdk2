@@ -27,7 +27,10 @@
 extern "C" {
 #endif
 
+#if defined(_WIN32)
 #define _POSIX_C_SOURCE 199309L
+#endif
+
 #define MG_ARCH_CUSTOM 0
 #define MG_ARCH_UNIX 1
 #define MG_ARCH_WIN32 2

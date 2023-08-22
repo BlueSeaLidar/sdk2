@@ -4,12 +4,14 @@ type:uart
 connectArg:com7
 #linux
 #connectArg:/dev/ttyUSB0 
-connectArg2:921600
+connectArg2:230400
 #data
 data_bytes:3
 with_checksum:1
 output_360:1
 from_zero:0
+is_group_listener:0
+group_ip:224.0.0.99
 service_port:8888
 is_open_service:1
 error_circle:3
@@ -26,3 +28,11 @@ with_deshadow:1
 resample_res:1
 rpm:-1
 
+
+shadow_filter.enable:1
+shadow_filter.min_angle:15
+shadow_filter.max_angle:165
+shadow_filter.window:5
+shadow_filter.neighbors:10
+median_filter.enable:1
+median_filter.window:1
