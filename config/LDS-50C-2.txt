@@ -1,10 +1,10 @@
 #connect
 type:uart
-#windows  这里的X指具体端口
-connectArg:com7
-#linux
-#connectArg:/dev/ttyUSB0 
-#384000 500000 768000 921600
+#windows  com name
+#connectArg:com1
+#linux com name
+connectArg:/dev/ttyUSB0
+#baud rate 384000 500000 768000 921600
 connectArg2:500000
 #data
 data_bytes:3

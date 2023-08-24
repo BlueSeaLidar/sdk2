@@ -147,7 +147,7 @@ bool BlueSeaLidarSDK::openDev(int ID)
 		OpenHeartService();
 	}
 	//判定数据线程是否正常运行
-	int index = 30;
+	int index = 100;
 	while (lidar->action < ONLINE && index > 0)
 	{
 		msleep(100);
@@ -244,7 +244,7 @@ const char *BlueSeaLidarSDK::getVersion()
 void *lidar_service(void *param)
 {
 	int *ID = (int *)param;
-	BlueSeaLidarSDK::BlueSeaLidarSDK::getInstance()->getLidar(*ID)->webservice->OpenLocalService(*ID);
+	BlueSeaLidarSDK::BlueSeaLidarSDK::getInstance()->getLidar(*ID)->webservice->run(*ID);
 	return SUCCESS;
 }
 
@@ -302,13 +302,13 @@ bool BlueSeaLidarSDK::OpenHeartService()
 		m_checkservice = new LidarCheckService();
 
 	}
-	m_checkservice->openService();
+	m_checkservice->run();
 	return true;;
 }
 
 bool BlueSeaLidarSDK::CloseHeartService()
 {
-	m_checkservice->closeService();
+	m_checkservice->stop();
 	return true;
 }
 

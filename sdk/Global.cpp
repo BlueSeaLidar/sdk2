@@ -1741,6 +1741,19 @@ bool CommunicationAPI::uart_talk(int fd, int n, const char* cmd, int nhdr, const
 					memcpy(fetch, buf + i + nhdr, nfetch);
 					fetch[nfetch] = 0;
 				}
+				else if(strstr(cmd, "LSRPM")!=NULL)
+				{
+					if(buf[i + nhdr+1]=='O'&&buf[i + nhdr+2]=='K')
+					{
+						strcpy(fetch, "OK");
+						fetch[3] = 0;
+					}
+					else if(buf[i + nhdr+1]=='e'&&buf[i + nhdr+2]=='r')
+					{
+						strcpy(fetch, "NG");
+						fetch[3] = 0;
+					}
+				}
 				else
 				{
 					strcpy(fetch, "OK");
@@ -1754,6 +1767,11 @@ bool CommunicationAPI::uart_talk(int fd, int n, const char* cmd, int nhdr, const
 			if (nfetch > 0)
 			{
 				memcpy(fetch, buf + i + n + 1, 2);
+				if(buf[ i + n + 1]=='E'&&buf[ i + n + 2]=='R') 
+				{
+					fetch[0]='N';
+					fetch[1]='G';
+				}
 				fetch[2] = 0;
 			}
 			return true;
@@ -1762,10 +1780,10 @@ bool CommunicationAPI::uart_talk(int fd, int n, const char* cmd, int nhdr, const
 		{
 			if (nfetch > 0)
 			{
-				strcpy(fetch, "unsupport");
+				strcpy(fetch, "unsupport"); 
 				fetch[10] = 0;
 			}
-			return false;
+			return true;
 		}
 	}
 

@@ -739,7 +739,7 @@ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* 
 		sprintf(cmd, "LSRPM:%dH", arg->rpm);
 		for (int i = 0; i < index; i++)
 		{
-			if (CommunicationAPI::uart_talk(fd_uart, strlen(cmd), cmd, 3, "RPM", 12, buf))
+			if (CommunicationAPI::uart_talk(fd_uart, strlen(cmd), cmd, 8, "Set RPM:", 12, buf))
 			{
 				printf("set RPM to %d  %s\n", arg->rpm, buf);
 				break;

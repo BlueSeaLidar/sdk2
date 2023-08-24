@@ -14,7 +14,7 @@ LidarWebService::~LidarWebService()
 {
 }
 
-void LidarWebService::OpenLocalService(int lidarID)
+void LidarWebService::run(int lidarID)
 {	
 	char address[64] = {0};
 	sprintf(address, "http://0.0.0.0:%d", m_port);
@@ -22,7 +22,7 @@ void LidarWebService::OpenLocalService(int lidarID)
 	mg_log_set("2");   // Set to 3 to enable debug
 	mg_mgr_init(&mgr); // Initialise event manager
 
-	mg_http_listen(&mgr, address, fn, &lidarID); // Create HTTP listener
+	mg_http_listen(&mgr, address, thread_web, &lidarID); // Create HTTP listener
 	for (;;)
 	{
 		mg_mgr_poll(&mgr, 100); // Infinite event loop	
@@ -31,7 +31,7 @@ void LidarWebService::OpenLocalService(int lidarID)
 	
 }
 
-void LidarWebService::CloseLocalService()
+void LidarWebService::stop()
 {
 }
 static char *jsonValue(const char *result, const char *message, cJSON *array)
@@ -211,7 +211,7 @@ void DevDataToStr(DevData *devdata, int index, char *value)
 		break;
 	}
 }
-static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
+static void thread_web(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 {
 	int id = *(int *)fn_data;
 	RunConfig *runcfg = BlueSeaLidarSDK::getInstance()->getLidar(id);

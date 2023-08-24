@@ -13,28 +13,28 @@ LidarCheckService::~LidarCheckService()
 	m_close_service = true;
 }
 
-void LidarCheckService::openService()
+void LidarCheckService::run()
 {
 	if (m_thread_heart != 0)
 		return;
 #ifdef __unix__
-	if (pthread_create(&m_thread_heart,NULL , lidar_heart,&m_close_service) != 0)
+	if (pthread_create(&m_thread_heart,NULL , thread_heart,&m_close_service) != 0)
 		return ;
 #elif _WIN32
-	if ((int)CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)lidar_heart, &m_close_service, 0, &m_thread_heart) < 0)
+	if ((int)CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)thread_heart, &m_close_service, 0, &m_thread_heart) < 0)
 		return ;
 #endif
 	
 }
 
-void LidarCheckService::closeService()
+void LidarCheckService::stop()
 {
 	m_close_service = true;
 }
 
 std::vector<DevConnInfo> LidarCheckService::getLidarsList()
 {
-	openService();
+	run();
 	uartDevInfo();
 	return m_infos;
 }
@@ -46,7 +46,7 @@ void LidarCheckService::getTime_HMS(char* data)
 	int ss = t0 % 60;
 	sprintf(data, "%d-%d-%d", hh, mm, ss);
 }
-void LidarCheckService::clearLidarsCache()
+void LidarCheckService::clear()
 {
 	m_infos.clear();
 }
@@ -88,7 +88,7 @@ void uptodate(DevConnInfo data)
 	}
 	m_infos.push_back(data);
 }
-void* lidar_heart(void* p)
+void* thread_heart(void* p)
 {
 	bool closeflag = *(bool*)p;
 #ifdef _WIN32

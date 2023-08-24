@@ -8,9 +8,9 @@ public:
 	LidarCheckService();
 	~LidarCheckService();
 
-	void openService();
-	void closeService();
-	void clearLidarsCache();
+	void run();
+	void stop();
+	void clear();
 	std::vector<DevConnInfo> getLidarsList();
 	static void getTime_HMS(char*data);
 	void uartDevInfo();
@@ -19,7 +19,7 @@ private:
 	bool m_close_service;
 
 };
-void* lidar_heart(void* p);
+void* thread_heart(void* p);
 
 //static void getTime_HMS(char*data);
 void uptodate(DevConnInfo data);

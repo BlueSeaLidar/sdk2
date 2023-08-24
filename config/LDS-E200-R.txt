@@ -1,9 +1,9 @@
 #connect
 type:uart
-#windows  这里的X指具体端口
-connectArg:com7
-#linux
-#connectArg:/dev/ttyUSB0 
+#windows  com name
+#connectArg:com1
+#linux com name
+connectArg:/dev/ttyUSB0
 connectArg2:921600
 #data
 data_bytes:3
