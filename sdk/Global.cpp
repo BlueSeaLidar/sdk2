@@ -814,7 +814,7 @@ int UserAPI::whole_data_process(const RawData& raw,int collect_angle, std::vecto
 {
 	char tmp[128]={0};
     whole_datas.push_back(raw);
-    if (raw.angle + raw.span == collect_angle)
+    if ((raw.angle + raw.span)%3600 == collect_angle)
 	{
         //int a=1;
 	}
