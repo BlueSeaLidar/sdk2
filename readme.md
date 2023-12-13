@@ -9,8 +9,7 @@ Prerequisite: g++ and gcc must be installed
 	cmake CMakeList.txt
 	make
 	make install
-	cd tools
-	./demo ../config/xxxx.txt  
+	./demo config/xxxx.txt  
 
 ## WINDOWS ##
 windows powershell

@@ -49,7 +49,7 @@ bool setup_lidar_udp(int fd_udp, RunScript* arg)
 	// 硬件版本号
 	if (arg->version >= 0)
 	{
-		if (CommunicationAPI::udp_talk_C_PACK(fd_udp, arg->connectArg, arg->connectArg2, 6, "LXVERH", 14, "MOTOR VERSION:", 15, buf))
+		if (CommunicationAPI::udp_talk_C_PACK(fd_udp, arg->connectArg, arg->connectArg2, 6, "LVERSH", 14, "MOTOR VERSION:", 15, buf))
 		{
 			printf("set LiDAR LXVERH  OK %.12s\n", buf);
 		}
@@ -61,11 +61,11 @@ bool setup_lidar_udp(int fd_udp, RunScript* arg)
 		sprintf(cmd, "LSDSW:%dH", arg->with_deshadow);
 		if (CommunicationAPI::udp_talk_S_PACK(fd_udp, arg->connectArg, arg->connectArg2, sizeof(cmd), cmd, result))
 		{
-			printf("set LiDAR deshadow %s\n", result);
+			printf("set LiDAR deshadow %s %s\n", cmd,result);
 		}
 		else
 		{
-			printf("set LiDAR deshadow NG\n");
+			printf("set LiDAR deshadow %s NG\n", cmd);
 		}
 	}
 	if (arg->with_smooth >= 0)
@@ -844,7 +844,11 @@ void* lidar_thread_proc_udp(void* param)
 			sockaddr_in addr;
 			socklen_t sz = sizeof(addr);
 			int buf_len = recvfrom(cfg->fd, (char*)buf, BUF_SIZE, 0, (struct sockaddr*)&addr, &sz);
-			//printf("thread:%d IP:%s port:%d\n", GetCurrentThreadId(), (char*)inet_ntoa(addr.sin_addr), htons(addr.sin_port));
+
+			if (strcmp(cfg->runscript.connectArg, (char*)inet_ntoa(addr.sin_addr)) != 0)
+				continue;
+			//printf("thread:%d IP:%s IP2:%s\n", GetCurrentThreadId(), (char*)inet_ntoa(addr.sin_addr), cfg->runscript.connectArg);
+
 			if (buf_len > 0)
 			{
 				int consume = 0; // in order to compute the rest of data after every parser process
@@ -887,7 +891,6 @@ void* lidar_thread_proc_udp(void* param)
 							sprintf(info, "%d %d span err  code:%d value:%s ", tv.tv_sec,tv.tv_usec,ret, error.c_str());
 							cfg->callback(9, info, strlen(info) + 1);
 							error = "";
-							
 						}
 						if (ret == 1)
 						{
@@ -920,6 +923,7 @@ void* lidar_thread_proc_udp(void* param)
 							cfg->userdata.data.framedata.ts[1] = data.ts[1];
 							whole_datas.clear();
 							cfg->action = RUN;
+							cfg->callback(1, &cfg->userdata, sizeof(UserData));
 						}
 					}
 					// 单独扇区输出
@@ -928,8 +932,9 @@ void* lidar_thread_proc_udp(void* param)
 						cfg->userdata.idx++;
 						memcpy(&cfg->userdata.data.spandata.data, &dat, sizeof(RawData));
 						cfg->action = RUN;
+						cfg->callback(1, &cfg->userdata, sizeof(UserData));
 					}
-					cfg->callback(1, &cfg->userdata,sizeof(UserData));
+					
 					//避免累加越界
 					if (cfg->userdata.idx >= MAX_FRAMEIDX)
 						cfg->userdata.idx = 0;
