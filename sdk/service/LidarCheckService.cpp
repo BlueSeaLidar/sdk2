@@ -1,3 +1,4 @@
+#include <pthread.h>
 #include "LidarCheckService.h"
 
 std::vector<DevConnInfo> m_infos;
