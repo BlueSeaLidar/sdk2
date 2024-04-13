@@ -10,7 +10,7 @@ Prerequisite: g++ and gcc must be installed
 	cd build
 	cmake ..
 	make
-	./demo ../config/xxxx.txt  
+	./demo ../config/xxxx.txt
 
 ## WINDOWS ##
 windows powershell

@@ -440,7 +440,7 @@ static void thread_web(struct mg_connection *c, int ev, void *ev_data, void *fn_
 				cJSON *point;
 				cJSON *item;
 				char conn_ip[16] = {0};
-				short conn_port = 0;
+				int conn_port = 0;
 				for (unsigned int i = 0; i < data.size(); i++)
 				{
 					point = cJSON_CreateObject();
@@ -454,6 +454,11 @@ static void thread_web(struct mg_connection *c, int ev, void *ev_data, void *fn_
 					item = cJSON_CreateNumber(data.at(i).com_speed);
 					cJSON_AddItemToObject(point, "com_speed", item);
 
+					if (type == 0)
+					{
+						strcpy(conn_ip, " ");
+						conn_port = data.at(i).com_speed;
+					}
 					if (type == 1)
 					{
 						DevInfo v1;

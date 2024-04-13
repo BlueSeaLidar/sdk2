@@ -4,7 +4,7 @@
 #include "LidarDataProcess.h"
 #include "LidarCheckService.h"
 #include "error.h"
-#define SDKVERSION "3.0" // SDK版本号
+#define SDKVERSION "3.1" // SDK版本号
 
 class BlueSeaLidarSDK
 {
@@ -208,7 +208,13 @@ public:
 	 * @others:        Repeatable, different from ID
 	 *************************************************/
 	bool SetDID(int ID, unsigned int number);
-
+	/************************************************
+	 * @functionName:  getLidarsList
+	 * @date:          2023-12-13
+	 * @description:   CN:获取网络款雷达的心跳包数据和当前可用的串口雷达  EN:Get heartbeat packet data for networked Lidars and currently available serial Lidars
+	 * @return:        vector
+	 * @others:        The network heartbeat packet contains the received timestamp, which needs to be compared with the current timestamp to see if it is offline.
+	 *************************************************/
 	std::vector<DevConnInfo> getLidarsList();
 	bool OpenHeartService();
 	bool CloseHeartService();

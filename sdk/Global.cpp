@@ -1215,16 +1215,15 @@ int SystemAPI::GetComList(std::vector<UARTARG>& list)
 {
 	std::vector<int> port_list;
 	bool isOK = false;
-	port_list.push_back(100000);
-	port_list.push_back(115200);
 	port_list.push_back(230400);
 	port_list.push_back(256000);
 	port_list.push_back(384000);
+	port_list.push_back(460800);
 	port_list.push_back(500000);
 	port_list.push_back(768000);
 	port_list.push_back(921600);
 	port_list.push_back(1000000);
-
+	port_list.push_back(1500000);
 	std::vector<std::string> portNames = SystemAPI::GetComPort();
 	if (portNames.size() <= 0)
 		return 0;
@@ -1238,32 +1237,8 @@ int SystemAPI::GetComList(std::vector<UARTARG>& list)
 			int com_speed = port_list.at(j);
 			if (int ret = GetDevInfoByUART(portNames.at(i).c_str(), com_speed))
 			{
-				if (ret == 2 || com_speed == 100000)
-				{
-					com_speed = -1;
-				}
 				arg.port = com_speed;
 				strcpy(arg.portName, portNames.at(i).c_str());
-				list.push_back(arg);
-				isOK = true;
-				break;
-			}
-
-		}
-		if (isOK)
-		{
-			isOK = false;
-			continue;
-		}
-
-		for (unsigned int j = 0; j < port_list.size(); j++)
-		{
-			int com_speed = port_list.at(j);
-			if (int ret = GetDevInfoByVPC(portNames.at(i).c_str(), com_speed))
-			{
-				com_speed = -1;
-				strcpy(arg.portName, portNames.at(i).c_str());
-				arg.port = com_speed;
 				list.push_back(arg);
 				isOK = true;
 				break;
@@ -1275,68 +1250,63 @@ int SystemAPI::GetComList(std::vector<UARTARG>& list)
 			continue;
 		}
 
+		int com_speed = 12345;
+		if (int ret = GetDevInfoByVPC(portNames.at(i).c_str(), com_speed))
+		{
+			strcpy(arg.portName, portNames.at(i).c_str());
+			arg.port = -1;
+			list.push_back(arg);
+		}
 	}
 	return 0;
 }
 int GetDevInfoByUART(const char* port_str, int speed)
 {
-	int zeroNum = 0, hdr = 0;
+	int zeroNum = 0;
 	unsigned long  wf = 0, rf = 0;
 
-	unsigned int check_size = 1024;
-	int hPort = Open_serial_port(port_str, speed);
+	unsigned int check_size = 4096;
+	int hPort = SystemAPI::open_serial_port(port_str, speed);
 	if (hPort <= 0) {
 		return false;
 	}
+
 	char cmd[] = "LUUIDH";
 	wf = write(hPort, cmd, sizeof(cmd));
 	int bOK = false;
 	unsigned char* buf = new unsigned char[check_size];
 	while (rf < check_size)
 	{
-		long  tmp = read(hPort, buf + rf, check_size - rf);
+		int  tmp = read(hPort, buf + rf, check_size - rf);
 		if (tmp > 0)
 		{
 			rf += tmp;
-			zeroNum = 0;
+			//zeroNum = 0;
 		}
 		else
 		{
 			zeroNum++;
-			msleep(10);
+			msleep(1);
 		}
 
-		if (zeroNum > 100)
+		if (zeroNum > 10)
+		{
+			//printf("read 0 byte max index break\n");
 			break;
+		}
 	}
+	/*if (zeroNum <= 10)
+		printf("read max byte break\n");*/
+
 	if (rf > 10)
 	{
 		for (unsigned int idx = 0; idx < rf - 10; idx++)
 		{
 			if (memcmp((char*)buf + idx, "PRODUCT SN:", 11) == 0)
 			{
-				//MessageBox(NULL, "11", test, 0);
 				bOK = 1;
 				break;
 			}
-			else if (memcmp((char*)buf + idx, "LMSG", 4) == 0)
-			{
-				//MessageBox(NULL, "2", test, 0);
-				bOK = 2;
-				break;
-			}
-			else if (buf[idx + 1] == 0xfa && (buf[idx] == 0xdf || buf[idx] == 0xce || buf[idx] == 0xcf || buf[idx] == 0xc7 || buf[idx] == 0x9d || buf[idx] == 0x99))
-			{
-				hdr++;
-				if (hdr > 2)
-				{
-					bOK = 3;
-					break;
-				}
-
-
-			}
-
 		}
 	}
 	SystemAPI::closefd(hPort, false);
@@ -1349,20 +1319,20 @@ int GetDevInfoByVPC(const char* port_str, int speed)
 	int zeroNum = 0;
 	unsigned long  rf = 0;
 
-	unsigned int check_size = 2048;
-	int hPort = Open_serial_port(port_str, speed);
+	unsigned int check_size = 10240;
+	int hPort = SystemAPI::open_serial_port(port_str, speed);
 	if (hPort <= 0) {
 		//MessageBox(NULL, "open port failed", "warm", 0);
 		return false;
 	}
 	char cmd[] = "LUUIDH";
-	send_cmd_vpc((int)hPort, 0x0043, rand(), sizeof(cmd), cmd);
+	CommunicationAPI::send_cmd_vpc((int)hPort, 0x0043, rand(), sizeof(cmd), cmd);
 	int bOK = false;
 	unsigned char* buf = new unsigned char[check_size];
 	//遍历返回的信息中是否含有MCU VERSION:
 	while (rf < check_size)
 	{
-		long  tmp = read(hPort, buf + rf, check_size - rf);
+		int  tmp = read(hPort, buf + rf, check_size - rf);
 		if (tmp > 0)
 		{
 			rf += tmp;
@@ -1371,10 +1341,10 @@ int GetDevInfoByVPC(const char* port_str, int speed)
 		else
 		{
 			zeroNum++;
-			msleep(10);
+			msleep(1);
 		}
 
-		if (zeroNum > 100)
+		if (zeroNum > 3)
 			break;
 
 	}
@@ -1390,7 +1360,7 @@ int GetDevInfoByVPC(const char* port_str, int speed)
 			else if (memcmp((char*)buf + idx, "LMSG", 4) == 0)
 			{
 				//MessageBox(NULL, "4", test, 0);
-				bOK = 2;
+				bOK = 3;
 			}
 		}
 	}
@@ -2025,7 +1995,6 @@ bool CommunicationAPI::udp_talk_C_PACK(int fd_udp, const char* lidar_ip, int lid
 			ntry++;
 			sockaddr_in addr;
 			socklen_t sz = sizeof(addr);
-
 			char buf[1024] = { 0 };
 			int nr = recvfrom(fd_udp, buf, sizeof(buf), 0, (struct sockaddr*)&addr, &sz);
 			if (nr > 0)

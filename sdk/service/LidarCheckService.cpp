@@ -60,6 +60,7 @@ void LidarCheckService::uartDevInfo()
 	for (unsigned int i = 0; i < list.size(); i++)
 	{
 		DevConnInfo tmp;
+		memset(&tmp, 0, sizeof(DevConnInfo));
 		strcpy(tmp.com_port, list.at(i).portName);
 		tmp.com_speed = list.at(i).port;
 		strcpy(tmp.timeStr,"0");
