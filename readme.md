@@ -6,10 +6,11 @@ windows/linux SDK and Demo programs for lanhai 2d lidar
 ## LINUX ##
 Prerequisite: g++ and gcc must be installed
 
-	cmake CMakeList.txt
+	mkdir build
+	cd build
+	cmake ..
 	make
-	make install
-	./demo config/xxxx.txt  
+	./demo ../config/xxxx.txt
 
 ## WINDOWS ##
 windows powershell

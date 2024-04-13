@@ -137,7 +137,7 @@ bool BlueSeaLidarSDK::openDev(int ID)
 	{
 		lidar->state = WORK_AND_WEB;
 		if (OpenLocalService(ID))
-			printf("Please control it through a browser and enter the default address: http://localhost: %d\n", lidar->runscript.service_port);
+			printf("Please control it through a browser and enter the default address: http://localhost:%d\n", lidar->runscript.service_port);
 		else
 		{
 			printf("Open web thread failed,port:%d\n", lidar->runscript.service_port);
