@@ -27,12 +27,12 @@
 #include <sys/socket.h>
 #endif
 
-bool setup_lidar_udp(int fd_udp, RunScript* arg)
+bool setup_lidar_udp(int fd_udp, RunScript *arg)
 {
 	char buf[32];
 	if (arg->ats >= 0)
 	{
-		char tmp[3] = { 0 };
+		char tmp[3] = {0};
 		if (CommunicationAPI::udp_talk_S_PACK(fd_udp, arg->connectArg, arg->connectArg2, 10, "LSATS:001H", tmp))
 		{
 			printf("set LSATS:1H ,result:%s\n", tmp);
@@ -54,14 +54,14 @@ bool setup_lidar_udp(int fd_udp, RunScript* arg)
 			printf("set LiDAR LXVERH  OK %.12s\n", buf);
 		}
 	}
-	char result[3] = { 0 };
+	char result[3] = {0};
 	if (arg->with_deshadow >= 0)
 	{
-		char cmd[12] = { 0 };
+		char cmd[12] = {0};
 		sprintf(cmd, "LSDSW:%dH", arg->with_deshadow);
 		if (CommunicationAPI::udp_talk_S_PACK(fd_udp, arg->connectArg, arg->connectArg2, sizeof(cmd), cmd, result))
 		{
-			printf("set LiDAR deshadow %s %s\n", cmd,result);
+			printf("set LiDAR deshadow %s %s\n", cmd, result);
 		}
 		else
 		{
@@ -70,7 +70,7 @@ bool setup_lidar_udp(int fd_udp, RunScript* arg)
 	}
 	if (arg->with_smooth >= 0)
 	{
-		char cmd[12] = { 0 };
+		char cmd[12] = {0};
 		sprintf(cmd, "LSSMT:%dH", arg->with_smooth);
 		if (CommunicationAPI::udp_talk_S_PACK(fd_udp, arg->connectArg, arg->connectArg2, 6, cmd, result))
 		{
@@ -117,7 +117,7 @@ bool setup_lidar_udp(int fd_udp, RunScript* arg)
 	}
 	if (arg->alarm_msg >= 0)
 	{
-		char cmd[12] = { 0 };
+		char cmd[12] = {0};
 		sprintf(cmd, "LSPST:%dH", arg->alarm_msg == 1 ? 3 : 1);
 		if (CommunicationAPI::udp_talk_S_PACK(fd_udp, arg->connectArg, arg->connectArg2, sizeof(cmd), cmd, result))
 		{
@@ -130,7 +130,7 @@ bool setup_lidar_udp(int fd_udp, RunScript* arg)
 	}
 	if (arg->direction >= 0)
 	{
-		char cmd[12] = { 0 };
+		char cmd[12] = {0};
 		sprintf(cmd, "LSCCW:%dH", arg->direction);
 		if (CommunicationAPI::udp_talk_S_PACK(fd_udp, arg->connectArg, arg->connectArg2, sizeof(cmd), cmd, result))
 		{
@@ -144,7 +144,7 @@ bool setup_lidar_udp(int fd_udp, RunScript* arg)
 	return true;
 }
 
-int strip(const char* s, char* buf)
+int strip(const char *s, char *buf)
 {
 	int len = 0;
 	for (int i = 0; s[i] != 0; i++)
@@ -161,52 +161,55 @@ int strip(const char* s, char* buf)
 	buf[len] = 0;
 	return len;
 }
-void* lidar_thread_proc_uart(void* param)
+void *lidar_thread_proc_uart(void *param)
 {
-	RunConfig* cfg = (RunConfig*)param;
-	// 用户数据结构体处理
+	RunConfig *cfg = (RunConfig *)param;
 	if (cfg->runscript.output_360)
 		cfg->userdata.type = FRAMEDATA;
 	else
 		cfg->userdata.type = SPANDATA;
 	strcpy(cfg->userdata.connectArg1, cfg->runscript.connectArg);
 	cfg->userdata.connectArg2 = cfg->runscript.connectArg2;
-	FanSegment_AA** fan_segs = new FanSegment_AA*;
+	FanSegment_AA **fan_segs = new FanSegment_AA *;
 	*fan_segs = NULL;
 	std::vector<RawData> whole_datas;
 	int error_num = 0;
 	int is_pack;
+	int data_bytes = 3;
 	int collect_angle = -1, state = -1;
 	std::string error;
 	UartState uartstate;
 	CmdHeader cmdheader;
-	char result[512] = { 0 };
-	char info[512] = { 0 };
+	char result[512] = {0};
+	char info[512] = {0};
 
 	if (strcmp(cfg->runscript.type, "uart") == 0)
 		setup_lidar_uart(cfg->fd, &cfg->runscript, &cfg->eepromv101, cfg->hardwareVersion);
 	else
 		setup_lidar_vpc(cfg->fd, &cfg->runscript);
 
-	sprintf(info, "All params set OK ! Start parser data");
-	cfg->callback(9, info, strlen(info)+1);
+	//sprintf(info, "All params set OK ! Start parser data");
+	//cfg->callback(8, info, strlen(info) + 1);
 
 	/*
 	 * 4, read and parser data
 	 */
-	unsigned char* buf = new unsigned char[BUF_SIZE];
+	unsigned char *buf = new unsigned char[BUF_SIZE];
 	int buf_len = 0;
 	int ret;
-	while (cfg->state!= STOP_ALL)
+	struct timeval start_tv;
+	gettimeofday(&start_tv, NULL);
+
+	while (cfg->state != STOP_ALL)
 	{
-		
+
 #ifdef _WIN32
 		if (cfg->fd > 0)
 #elif __linux
 		fd_set fds;
 		FD_ZERO(&fds);
 		FD_SET(cfg->fd, &fds);
-		struct timeval to = { 1, 1 };
+		struct timeval to = {1, 1};
 		ret = select(cfg->fd + 1, &fds, NULL, NULL, &to);
 		if (ret < 0)
 		{
@@ -214,13 +217,13 @@ void* lidar_thread_proc_uart(void* param)
 			return NULL;
 		}
 		if (cfg->fd > 0 && FD_ISSET(cfg->fd, &fds))
-#endif // _WIN32	
+#endif // _WIN32
 		{
 			int nr = read(cfg->fd, buf + buf_len, BUF_SIZE - buf_len);
 			if (nr < 0)
 			{
 				sprintf(info, "read port %d error %d", buf_len, nr);
-				cfg->callback(9, info, strlen(info)+1);
+				cfg->callback(9, info, strlen(info) + 1);
 				break;
 			}
 			if (nr == 0)
@@ -233,17 +236,17 @@ void* lidar_thread_proc_uart(void* param)
 			if (nr > 0)
 			{
 				buf_len += nr;
-			}		
+			}
 		}
 
 		if (buf_len > 0)
 		{
 			int consume = 0; // in order to compute the rest of data after every parser process
-			int res = -1;
+			//int res = -1;
 			RawData dat;
-			if (cfg->runscript.data_bytes == 3)
+			if (data_bytes == 3)
 			{
-				is_pack = ParseAPI::parse_data_x(buf_len, buf, &uartstate, dat, consume, true, result, &cmdheader, (void**)fan_segs);
+				is_pack = ParseAPI::parse_data_x(buf_len, buf, &uartstate, dat, consume, true, data_bytes, result, &cmdheader, (void **)fan_segs);
 			}
 			else
 			{
@@ -264,45 +267,45 @@ void* lidar_thread_proc_uart(void* param)
 					{
 						collect_angle = state;
 						cfg->action = ONLINE;
-						sprintf(info, "Lidar start work,first span angle is %d", collect_angle);
-						cfg->callback(8, info, strlen(info)+1);
+						sprintf(info, "Lidar start work,first span angle is %d", collect_angle/10);
+						cfg->callback(8, info, strlen(info) + 1);
 					}
 					break;
 				}
 				if (cfg->runscript.output_360)
 				{
 					ret = UserAPI::whole_data_process(dat, collect_angle, whole_datas, error);
-					if (cfg->action >=RUN&& ret==-1)
+					if (cfg->action >= RUN && ret == -1)
 					{
 						timeval tv;
 						gettimeofday(&tv, NULL);
-						sprintf(info, "%d %d span err  code:%d value:%s ", tv.tv_sec, tv.tv_usec, ret, error.c_str());
-						cfg->callback(9, info, strlen(info)+1);
-						error = "";
-						
+						if (tv.tv_sec - start_tv.tv_sec > 2)
+						{
+							sprintf(info, "%ld %ld span err  code:%d value:%s ", tv.tv_sec, tv.tv_usec, ret, error.c_str());
+							cfg->callback(9, info, strlen(info) + 1);
+							error = "";
+						}
 					}
 					if (ret == 1)
 					{
-						int sum = 0;
+						cfg->userdata.framedata.data.clear();
 						for (std::size_t i = 0; i < whole_datas.size(); i++)
 						{
 							for (int j = 0; j < whole_datas.at(i).N; j++)
 							{
-								cfg->userdata.data.framedata.data[sum] = whole_datas.at(i).points[j];
-								sum++;
+								cfg->userdata.framedata.data.push_back(whole_datas.at(i).points[j]);
 							}
 						}
-						cfg->userdata.data.framedata.N = sum;
 						// 执行回调函数
-						if (sum > 0)
+						if (cfg->userdata.framedata.data.size() > 0)
 						{
 							if (cfg->runscript.shadows_filter.enable)
 							{
-								AlgorithmAPI_E100::ShadowsFilter(&cfg->userdata, cfg->runscript.shadows_filter);
+								AlgorithmAPI::ShadowsFilter(&cfg->userdata, cfg->runscript.shadows_filter);
 							}
 							if (cfg->runscript.median_filter.enable)
 							{
-								AlgorithmAPI_E100::MedianFilter(&cfg->userdata, cfg->runscript.median_filter);
+								AlgorithmAPI::MedianFilter(&cfg->userdata, cfg->runscript.median_filter);
 							}
 							if (checkPointsLengthZero(&cfg->userdata, cfg->runscript.error_scale))
 								error_num++;
@@ -311,23 +314,32 @@ void* lidar_thread_proc_uart(void* param)
 							if (cfg->runscript.error_circle <= error_num)
 							{
 								sprintf(info, "%s %d There are many points with a distance of 0 in the current lidar operation", cfg->runscript.connectArg, cfg->runscript.connectArg2);
-								cfg->callback(3, info,strlen(info)+1);
+								cfg->callback(3, info, strlen(info) + 1);
 								error_num = 0;
 							}
+						}
+						if (cfg->runscript.separation_filter.filter_open)
+						{
+							double angle_increment = 2 * PI / cfg->userdata.framedata.data.size();
+							AlgorithmAPI::filter(cfg->userdata.framedata.data,
+												 cfg->runscript.separation_filter.max_range,
+												 cfg->runscript.separation_filter.min_range,
+												 cfg->runscript.separation_filter.max_range_difference,
+												 cfg->runscript.separation_filter.filter_window, angle_increment);
 						}
 						cfg->userdata.idx++;
 						if (strcmp(cfg->runscript.type, "uart") == 0)
 						{
 							struct timeval tv;
 							gettimeofday(&tv, NULL);
-							cfg->userdata.data.framedata.ts[0] = tv.tv_sec;
-							cfg->userdata.data.framedata.ts[1] = tv.tv_usec;
+							cfg->userdata.framedata.ts[0] = tv.tv_sec;
+							cfg->userdata.framedata.ts[1] = tv.tv_usec;
 						}
 						else if (strcmp(cfg->runscript.type, "vpc") == 0)
 						{
 							RawData data = whole_datas.at(whole_datas.size() - 1);
-							cfg->userdata.data.framedata.ts[0] = data.ts[0];
-							cfg->userdata.data.framedata.ts[1] = data.ts[1];
+							cfg->userdata.framedata.ts[0] = data.ts[0];
+							cfg->userdata.framedata.ts[1] = data.ts[1];
 						}
 						whole_datas.clear();
 						cfg->action = RUN;
@@ -340,13 +352,13 @@ void* lidar_thread_proc_uart(void* param)
 				{
 
 					cfg->userdata.idx++;
-					memcpy(&cfg->userdata.data.spandata.data, &dat, sizeof(RawData));
+					memcpy(&cfg->userdata.spandata.data, &dat, sizeof(RawData));
 					if (strcmp(cfg->runscript.type, "uart") == 0)
 					{
 						struct timeval tv;
 						gettimeofday(&tv, NULL);
-						cfg->userdata.data.spandata.data.ts[0] = tv.tv_sec;
-						cfg->userdata.data.spandata.data.ts[1] = tv.tv_usec;
+						cfg->userdata.spandata.data.ts[0] = tv.tv_sec;
+						cfg->userdata.spandata.data.ts[1] = tv.tv_usec;
 					}
 					else if (strcmp(cfg->runscript.type, "vpc") == 0)
 					{
@@ -355,8 +367,8 @@ void* lidar_thread_proc_uart(void* param)
 					cfg->action = RUN;
 				}
 
-				((void (*)(int, void*))cfg->callback)(1, &cfg->userdata);
-				//避免累加越界
+				((void (*)(int, void *))cfg->callback)(1, &cfg->userdata);
+				// 避免累加越界
 				if (cfg->userdata.idx >= MAX_FRAMEIDX)
 					cfg->userdata.idx = 0;
 				break;
@@ -365,7 +377,7 @@ void* lidar_thread_proc_uart(void* param)
 			{
 				// 报警信息
 				memcpy(&cfg->zonemsg, &result, sizeof(LidarMsgHdr));
-				((void (*)(int, void*))cfg->callback)(2, &result);
+				((void (*)(int, void *))cfg->callback)(2, &result);
 				cfg->action = FINISH;
 				break;
 			}
@@ -373,7 +385,7 @@ void* lidar_thread_proc_uart(void* param)
 			{
 				// 全局参数
 				memcpy(&cfg->eepromv101, &result, sizeof(EEpromV101));
-				((void (*)(int, void*))cfg->callback)(3, &result);
+				((void (*)(int, void *))cfg->callback)(3, &result);
 				cfg->action = FINISH;
 				break;
 			}
@@ -417,9 +429,9 @@ void* lidar_thread_proc_uart(void* param)
 				if (!is_pack)
 				{
 					printf("drop %d bytes: %02x %02x %02x %02x %02x %02x",
-						consume,
-						buf[0], buf[1], buf[2],
-						buf[3], buf[4], buf[5]);
+						   consume,
+						   buf[0], buf[1], buf[2],
+						   buf[3], buf[4], buf[5]);
 				}
 
 				for (int i = consume; i < buf_len; i++)
@@ -447,21 +459,15 @@ void* lidar_thread_proc_uart(void* param)
 		}
 		case GETALLPARAMS:
 		{
-			// EEpromV101 *eepromv101 = new EEpromV101;
-			// memset(eepromv101, 0, sizeof(EEpromV101));
-			char buf[20] = { 0 };
+			char buf[20] = {0};
 			if (strcmp(cfg->runscript.type, "uart") == 0)
 			{
 				if (CommunicationAPI::uart_talk(cfg->fd, 6, "LUUIDH", 11, "PRODUCT SN:", 16, buf))
 				{
-					// printf("uart GetDevInfo_MSG %s\n", buf);
+					printf("get LiDAR uuid info:  %s\n", buf);
+					std::string str = BaseAPI::stringfilter(buf, 16);
+					memcpy(cfg->eepromv101.dev_sn, str.c_str(), str.length());
 				}
-				else if (!CommunicationAPI::uart_talk(cfg->fd, 6, "LUUIDH", 10, "VENDOR ID:", 16, buf))
-				{
-					// printf("uart GetDevInfo_MSG %s\n", buf);
-				}
-				std::string str = BaseAPI::stringfilter(buf, 16);
-				memcpy(cfg->eepromv101.dev_sn, str.c_str(), str.length());
 			}
 			else if (strcmp(cfg->runscript.type, "vpc") == 0)
 			{
@@ -516,20 +522,21 @@ void* lidar_thread_proc_uart(void* param)
 			// 说明运行正常
 			break;
 		}
+		default:break;
 		}
 	}
-	SystemAPI::closefd(cfg->fd,false);
+	SystemAPI::closefd(cfg->fd, false);
 	return 0;
 }
 
-int setup_lidar_vpc(int hCom, RunScript* arg)
+int setup_lidar_vpc(int hCom, RunScript *arg)
 {
 	char buf[64];
 	int nr = 0;
 
 	if (arg->ats >= 0)
 	{
-		char tmp[3] = { 0 };
+		char tmp[3] = {0};
 		if (CommunicationAPI::vpc_talk(hCom, 0x0053, rand(), 10, "LSATS:002H", 3, tmp))
 		{
 			printf("set LSATS:2H ,result:%s\n", tmp);
@@ -610,7 +617,7 @@ int setup_lidar_vpc(int hCom, RunScript* arg)
 	}
 	return 0;
 }
-int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* version)
+int setup_lidar_uart(int fd_uart, RunScript *arg, EEpromV101 *eepromv101, char *version)
 {
 	char buf[32];
 	int index = 3;
@@ -628,7 +635,7 @@ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* 
 	if (nr <= 0)
 	{
 		printf("serial port seem not working\n");
-		SystemAPI::closefd(fd_uart,false);
+		SystemAPI::closefd(fd_uart, false);
 		return READ_UART_FAILED;
 	}
 	if (arg->uuid >= 0)
@@ -638,7 +645,7 @@ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* 
 			if (CommunicationAPI::uart_talk(fd_uart, 6, "LUUIDH", 11, "PRODUCT SN:", 12, buf))
 			{
 
-				strcpy((char*)eepromv101->dev_sn, buf);
+				strcpy((char *)eepromv101->dev_sn, buf);
 				printf("get LiDAR uuid info:  %s\n", eepromv101->dev_sn);
 				break;
 			}
@@ -664,7 +671,7 @@ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* 
 			if (CommunicationAPI::uart_talk(fd_uart, 6, "LTYPEH", 8, "TYPE ID:", 16, buf))
 			{
 				std::string tmp = BaseAPI::stringfilter(buf, 16);
-				memcpy((char*)eepromv101->dev_type, tmp.c_str(), tmp.length());
+				memcpy((char *)eepromv101->dev_type, tmp.c_str(), tmp.length());
 				printf("set LiDAR LTYPEH2  %s \n", eepromv101->dev_type);
 				break;
 			}
@@ -689,7 +696,7 @@ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* 
 		{
 			if (CommunicationAPI::uart_talk(fd_uart, 6, arg->with_confidence == 0 ? "LNCONH" : "LOCONH", 6, "LiDAR ", 12, buf))
 			{
-				printf("set LiDAR confidence %s\n", buf);
+				printf("set LiDAR confidence %.02s\n", buf);
 				break;
 			}
 		}
@@ -701,7 +708,7 @@ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* 
 		{
 			if (CommunicationAPI::uart_talk(fd_uart, 6, arg->with_deshadow == 0 ? "LFFF0H" : "LFFF1H", 6, "LiDAR ", 12, buf))
 			{
-				printf("set deshadow %s\n", buf);
+				printf("set deshadow %.02s\n", buf);
 				break;
 			}
 		}
@@ -713,7 +720,7 @@ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* 
 		{
 			if (CommunicationAPI::uart_talk(fd_uart, 6, arg->with_smooth == 0 ? "LSSS0H" : "LSSS1H", 6, "LiDAR ", 12, buf))
 			{
-				printf("set smooth %s\n", buf);
+				printf("set smooth %.02s\n", buf);
 				break;
 			}
 		}
@@ -727,7 +734,7 @@ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* 
 		{
 			if (CommunicationAPI::uart_talk(fd_uart, strlen(cmd), cmd, 15, "set resolution ", 12, buf))
 			{
-				printf("set LiDAR resample %s\n", buf);
+				printf("set LiDAR resample %.02s\n", buf);
 				break;
 			}
 		}
@@ -741,7 +748,7 @@ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* 
 		{
 			if (CommunicationAPI::uart_talk(fd_uart, strlen(cmd), cmd, 8, "Set RPM:", 12, buf))
 			{
-				printf("set RPM to %d  %s\n", arg->rpm, buf);
+				printf("set RPM to %d  %.02s\n", arg->rpm, buf);
 				break;
 			}
 		}
@@ -749,10 +756,9 @@ int setup_lidar_uart(int fd_uart, RunScript* arg, EEpromV101* eepromv101, char* 
 	return 0;
 }
 
-void* lidar_thread_proc_udp(void* param)
+void *lidar_thread_proc_udp(void *param)
 {
-	RunConfig* cfg = (RunConfig*)param;
-	// 用户数据结构体处理
+	RunConfig *cfg = (RunConfig *)param;
 	if (cfg->runscript.output_360)
 		cfg->userdata.type = FRAMEDATA;
 	else
@@ -761,17 +767,18 @@ void* lidar_thread_proc_udp(void* param)
 	strcpy(cfg->userdata.connectArg1, cfg->runscript.connectArg);
 	cfg->userdata.connectArg2 = cfg->runscript.connectArg2;
 
-	FanSegment_AA** fan_segs = new FanSegment_AA*;
+	FanSegment_AA **fan_segs = new FanSegment_AA *;
 	*fan_segs = NULL;
 	std::vector<RawData> whole_datas;
 	int error_num = 0;
 	int is_pack;
 	int collect_angle = -1, state = -1;
+	int data_bytes = 3;
 	std::string error;
 	UartState uartstate;
 	CmdHeader cmdheader;
-	char result[512] = { 0 };//内部数据保存字节流
-	char info[512] = { 0 };//返回给用户层面的信息打印
+	char result[512] = {0}; 
+	char info[512] = {0};
 	if (cfg->runscript.is_group_listener == 1)
 	{
 		ip_mreq group;
@@ -780,36 +787,37 @@ void* lidar_thread_proc_udp(void* param)
 		group.imr_interface.s_addr = INADDR_ANY;
 
 		int rt = setsockopt(cfg->fd, IPPROTO_IP,
-			IP_ADD_MEMBERSHIP, (char*)&group,
-			sizeof(group));
+							IP_ADD_MEMBERSHIP, (char *)&group,
+							sizeof(group));
 
 		if (rt < 0)
 		{
 			sprintf(info, "Adding to multicast group %s %s", cfg->runscript.group_ip, rt < 0 ? "fail!" : "ok");
-			cfg->callback(9, info,strlen(info)+1);
+			cfg->callback(9, info, strlen(info) + 1);
 			return NULL;
 		}
 		sprintf(info, "Adding to multicast group success");
-		cfg->callback(8, info, strlen(info)+1);
+		cfg->callback(8, info, strlen(info) + 1);
 	}
 	else
 	{
 		setup_lidar_udp(cfg->fd, &cfg->runscript);
 	}
 
-	sprintf(info, "All params set OK ! Start parser data");
-	cfg->callback(8, info, strlen(info)+1);
-	unsigned char* buf = new unsigned char[BUF_SIZE];
-	struct timeval tv;
+	//sprintf(info, "All params set OK ! Start parser data");
+	//cfg->callback(8, info, strlen(info) + 1);
+	unsigned char *buf = new unsigned char[BUF_SIZE];
+	struct timeval tv, start_tv;
 	gettimeofday(&tv, NULL);
+	gettimeofday(&start_tv, NULL);
 	time_t tto = tv.tv_sec + 1;
 	uint32_t delay = 0;
-	while (cfg->state!=STOP_ALL)
+	while (cfg->state != STOP_ALL)
 	{
 		fd_set fds;
 		FD_ZERO(&fds);
 		FD_SET(cfg->fd, &fds);
-		struct timeval to = { 1, 0 };
+		struct timeval to = {1, 0};
 		if (cfg->runscript.is_group_listener != 1)
 		{
 			int ret = select(cfg->fd + 1, &fds, NULL, NULL, &to);
@@ -824,17 +832,17 @@ void* lidar_thread_proc_udp(void* param)
 				// acknowlege device
 				CommunicationAPI::send_cmd_udp(cfg->fd, cfg->runscript.connectArg, cfg->runscript.connectArg2, 0x4b41, rand(), sizeof(alive), &alive);
 				tto = tv.tv_sec + 1;
-				 DevTimestamp devtimestamp;
-				 memcpy(devtimestamp.ip, cfg->runscript.connectArg, sizeof(cfg->runscript.connectArg));
-				 devtimestamp.port = cfg->runscript.connectArg2;
-				 devtimestamp.timestamp = alive.world_clock;
-				 devtimestamp.delay = delay;
-				 cfg->callback(4, &devtimestamp,sizeof(DevTimestamp));
+				DevTimestamp devtimestamp;
+				memcpy(devtimestamp.ip, cfg->runscript.connectArg, sizeof(cfg->runscript.connectArg));
+				devtimestamp.port = cfg->runscript.connectArg2;
+				devtimestamp.timestamp = alive.world_clock;
+				devtimestamp.delay = delay;
+				cfg->callback(4, &devtimestamp, sizeof(DevTimestamp));
 			}
 			if (ret < 0)
 			{
 				sprintf(info, "select error");
-				cfg->callback(9, info, strlen(info)+1);
+				cfg->callback(9, info, strlen(info) + 1);
 				break;
 			}
 		}
@@ -843,22 +851,23 @@ void* lidar_thread_proc_udp(void* param)
 		{
 			sockaddr_in addr;
 			socklen_t sz = sizeof(addr);
-			int buf_len = recvfrom(cfg->fd, (char*)buf, BUF_SIZE, 0, (struct sockaddr*)&addr, &sz);
+			int buf_len = recvfrom(cfg->fd, (char *)buf, BUF_SIZE, 0, (struct sockaddr *)&addr, &sz);
 
-			if (strcmp(cfg->runscript.connectArg, (char*)inet_ntoa(addr.sin_addr)) != 0)
+			// printf("IP:%s IP2:%s\n", (char*)inet_ntoa(addr.sin_addr), cfg->runscript.connectArg);
+
+			if (strcmp(cfg->runscript.connectArg, (char *)inet_ntoa(addr.sin_addr)) != 0)
 				continue;
-			//printf("thread:%d IP:%s IP2:%s\n", GetCurrentThreadId(), (char*)inet_ntoa(addr.sin_addr), cfg->runscript.connectArg);
 
 			if (buf_len > 0)
 			{
 				int consume = 0; // in order to compute the rest of data after every parser process
-				int res = -1;
+				//int res = -1;
 				RawData dat;
-				if (cfg->runscript.data_bytes == 3)
+				if (data_bytes == 3)
 				{
-					is_pack = ParseAPI::parse_data_x(buf_len, buf, &uartstate, dat, consume, true, result, &cmdheader, (void**)fan_segs);
+					is_pack = ParseAPI::parse_data_x(buf_len, buf, &uartstate, dat, consume, true, data_bytes, result, &cmdheader, (void **)fan_segs);
 				}
-				else
+				else if (data_bytes == 2)
 				{
 					is_pack = ParseAPI::parse_data(buf_len, buf, &uartstate, dat, consume, true);
 				}
@@ -876,35 +885,36 @@ void* lidar_thread_proc_udp(void* param)
 							whole_datas.clear();
 							collect_angle = state;
 							cfg->action = ONLINE;
-							sprintf(info, "Lidar start work,first span angle is %d", collect_angle);
-							cfg->callback(8, info, strlen(info)+1);
+							sprintf(info, "Lidar start work,first span angle is %d", collect_angle/10);
+							cfg->callback(8, info, strlen(info) + 1);
 						}
 						break;
 					}
 					if (cfg->runscript.output_360)
 					{
 						int ret = UserAPI::whole_data_process(dat, collect_angle, whole_datas, error);
-						if (cfg->action>=RUN&&ret==-1)
-						{	
-							timeval tv;
-							gettimeofday(&tv,NULL);
-							sprintf(info, "%d %d span err  code:%d value:%s ", tv.tv_sec,tv.tv_usec,ret, error.c_str());
-							cfg->callback(9, info, strlen(info) + 1);
+						if (cfg->action >= RUN && ret == -1)
+						{
+							timeval tmp_tv;
+							gettimeofday(&tmp_tv, NULL);
+							if (tmp_tv.tv_sec - start_tv.tv_sec > 2)
+							{
+								sprintf(info, "%ld %ld span err  code:%d value:%s ", tv.tv_sec, tv.tv_usec, ret, error.c_str());
+								cfg->callback(9, info, strlen(info) + 1);
+							}
 							error = "";
 						}
 						if (ret == 1)
 						{
-							int sum = 0;
+							cfg->userdata.framedata.data.clear();
 							for (unsigned int i = 0; i < whole_datas.size(); i++)
 							{
 								for (int j = 0; j < whole_datas.at(i).N; j++)
 								{
-									cfg->userdata.data.framedata.data[sum] = whole_datas.at(i).points[j];
-									sum++;
+									cfg->userdata.framedata.data.push_back(whole_datas.at(i).points[j]);
 								}
 							}
-							cfg->userdata.data.framedata.N = sum;
-							if (sum > 0)
+							if (cfg->userdata.framedata.data.size() > 0)
 							{
 								if (checkPointsLengthZero(&cfg->userdata, cfg->runscript.error_scale))
 									error_num++;
@@ -913,14 +923,23 @@ void* lidar_thread_proc_udp(void* param)
 								if (cfg->runscript.error_circle <= error_num)
 								{
 									sprintf(info, "%s %d There are many points with a distance of 0 in the current lidar operation", cfg->runscript.connectArg, cfg->runscript.connectArg2);
-									cfg->callback(9, info,strlen(info)+1);
+									cfg->callback(9, info, strlen(info) + 1);
 									error_num = 0;
 								}
 							}
+							if (cfg->runscript.separation_filter.filter_open)
+							{
+								double angle_increment = 2 * PI / cfg->userdata.framedata.data.size();
+								AlgorithmAPI::filter(cfg->userdata.framedata.data,
+													 cfg->runscript.separation_filter.max_range,
+													 cfg->runscript.separation_filter.min_range,
+													 cfg->runscript.separation_filter.max_range_difference,
+													 cfg->runscript.separation_filter.filter_window, angle_increment);
+							}
 							cfg->userdata.idx++;
 							RawData data = whole_datas.at(0);
-							cfg->userdata.data.framedata.ts[0] = data.ts[0];
-							cfg->userdata.data.framedata.ts[1] = data.ts[1];
+							cfg->userdata.framedata.ts[0] = data.ts[0];
+							cfg->userdata.framedata.ts[1] = data.ts[1];
 							whole_datas.clear();
 							cfg->action = RUN;
 							cfg->callback(1, &cfg->userdata, sizeof(UserData));
@@ -930,12 +949,12 @@ void* lidar_thread_proc_udp(void* param)
 					else
 					{
 						cfg->userdata.idx++;
-						memcpy(&cfg->userdata.data.spandata.data, &dat, sizeof(RawData));
+						memcpy(&cfg->userdata.spandata.data, &dat, sizeof(RawData));
 						cfg->action = RUN;
 						cfg->callback(1, &cfg->userdata, sizeof(UserData));
 					}
-					
-					//避免累加越界
+
+					// 避免累加越界
 					if (cfg->userdata.idx >= MAX_FRAMEIDX)
 						cfg->userdata.idx = 0;
 					break;
@@ -951,9 +970,9 @@ void* lidar_thread_proc_udp(void* param)
 				case 3:
 				{
 					// 全局参数
-					//memcpy(&cfg->eepromv101, &result, sizeof(EEpromV101));
+					// memcpy(&cfg->eepromv101, &result, sizeof(EEpromV101));
 					//((void (*)(int, void *))cfg->callback)(3, &result);
-					//cfg->action = FINISH;
+					// cfg->action = FINISH;
 					break;
 				}
 				case 4:
@@ -1044,196 +1063,108 @@ void* lidar_thread_proc_udp(void* param)
 		{
 			break;
 		}
+		default:break;
 		}
 	}
 	printf("%d\n", cfg->state);
-	SystemAPI::closefd(cfg->fd,true);
+	SystemAPI::closefd(cfg->fd, true);
 	return NULL;
 }
 
-bool readConfig(const char* cfg_file_name, RunScript& cfg)
+#include <cctype>
+#include <algorithm>
+bool readConfig(const char *cfg_file_name, RunScript &cfg)
 {
 	std::ifstream infile;
 	infile.open(cfg_file_name);
 	if (!infile.is_open())
 		return false;
 
-	std::string str, tmp;
+	std::string str, key, value;
 	while (getline(infile, str))
 	{
 		std::stringstream linestream(str);
-		getline(linestream, tmp, ':');
-		if (tmp == "type")
-		{
-			getline(linestream, tmp);
-			strcpy(cfg.type, tmp.c_str());
-		}
-		else if (tmp == "connectArg")
-		{
-			getline(linestream, tmp);
-			strcpy(cfg.connectArg, tmp.c_str());
-		}
-		else if (tmp == "connectArg2")
-		{
-			getline(linestream, tmp);
-			cfg.connectArg2 = atoi(tmp.c_str());
-		}
-		else if (tmp == "data_bytes")
-		{
-			getline(linestream, tmp);
-			cfg.data_bytes = atoi(tmp.c_str());
-		}
-		else if (tmp == "from_zero")
-		{
-			getline(linestream, tmp);
-			cfg.from_zero = atoi(tmp.c_str());
-		}
-		else if (tmp == "with_chk")
-		{
-			getline(linestream, tmp);
-			cfg.with_chk = atoi(tmp.c_str());
-		}
-		else if (tmp == "error_circle")
-		{
-			getline(linestream, tmp);
-			cfg.error_circle = atoi(tmp.c_str());
-		}
-		else if (tmp == "error_scale")
-		{
-			getline(linestream, tmp);
-			cfg.error_scale = atof(tmp.c_str());
-		}
-		else if (tmp == "output_360")
-		{
-			getline(linestream, tmp);
-			cfg.output_360 = atoi(tmp.c_str());
-		}
-		else if (tmp == "service_port")
-		{
-			getline(linestream, tmp);
-			cfg.service_port = atoi(tmp.c_str());
-		}
-		else if (tmp == "is_open_service")
-		{
-			getline(linestream, tmp);
-			cfg.is_open_service = atoi(tmp.c_str());
-		}
-		else if (tmp == "is_group_listener")
-		{
-			getline(linestream, tmp);
-			cfg.is_group_listener = atoi(tmp.c_str());
-		}
-		else if (tmp == "group_ip")
-		{
-			getline(linestream, tmp);
-			strcpy(cfg.group_ip, tmp.c_str());
-		}
-		else if (tmp == "shadow_filter.enable")
-		{
-			getline(linestream, tmp);
-			cfg.shadows_filter.enable = atoi(tmp.c_str());
-		}
-		else if (tmp == "shadow_filter.max_range")
-		{
-			getline(linestream, tmp);
-			cfg.shadows_filter.max_range = atoi(tmp.c_str());
-		}
-		else if (tmp == "shadow_filter.min_angle")
-		{
-			getline(linestream, tmp);
-			cfg.shadows_filter.min_angle = atoi(tmp.c_str());
-		}
-		else if (tmp == "shadow_filter.max_angle")
-		{
-			getline(linestream, tmp);
-			cfg.shadows_filter.max_angle = atoi(tmp.c_str());
-		}
-		else if (tmp == "shadow_filter.window")
-		{
-			getline(linestream, tmp);
-			cfg.shadows_filter.window = atoi(tmp.c_str());
-		}
-		else if (tmp == "median_filter.enable")
-		{
-			getline(linestream, tmp);
-			cfg.median_filter.enable = atoi(tmp.c_str());
-		}
-		else if (tmp == "median_filter.window")
-		{
-			getline(linestream, tmp);
-			cfg.median_filter.window = atoi(tmp.c_str());
-		}
-		else if (tmp == "uuid")
-		{
-			getline(linestream, tmp);
-			cfg.uuid = atoi(tmp.c_str());
-		}
-		else if (tmp == "model")
-		{
-			getline(linestream, tmp);
-			cfg.model = atoi(tmp.c_str());
-		}
-		else if (tmp == "version")
-		{
-			getline(linestream, tmp);
-			cfg.version = atoi(tmp.c_str());
-		}
+		getline(linestream, key, ':');
+		if (key.find("#") != std::string::npos || key.find(" ") != std::string::npos)
+			continue;
+		getline(linestream, value);
+		if (!key.empty())
+			value.erase(std::remove_if(value.begin(), value.end(), ::isspace), value.end());
 
-		else if (tmp == "rpm")
-		{
-			getline(linestream, tmp);
-			cfg.rpm = atoi(tmp.c_str());
-		}
-		else if (tmp == "resample_res")
-		{
-			getline(linestream, tmp);
-			cfg.resample_res = atoi(tmp.c_str());
-		}
-		else if (tmp == "with_smooth")
-		{
-			getline(linestream, tmp);
-			cfg.with_smooth = atoi(tmp.c_str());
-		}
-		else if (tmp == "with_deshadow")
-		{
-			getline(linestream, tmp);
-			cfg.with_deshadow = atoi(tmp.c_str());
-		}
-		else if (tmp == "with_start")
-		{
-			getline(linestream, tmp);
-			cfg.with_start = atoi(tmp.c_str());
-		}
-		else if (tmp == "with_confidence")
-		{
-			getline(linestream, tmp);
-			cfg.with_confidence = atoi(tmp.c_str());
-		}
-		else if (tmp == "unit_is_mm")
-		{
-			getline(linestream, tmp);
-			cfg.unit_is_mm = atoi(tmp.c_str());
-		}
-		else if (tmp == "alarm_msg")
-		{
-			getline(linestream, tmp);
-			cfg.alarm_msg = atoi(tmp.c_str());
-		}
-		else if (tmp == "direction")
-		{
-			getline(linestream, tmp);
-			cfg.direction = atoi(tmp.c_str());
-		}
-		else if (tmp == "ats")
-		{
-			getline(linestream, tmp);
-			cfg.ats = atoi(tmp.c_str());
-		}
-		else if (tmp == "local_port")
-		{
-			getline(linestream, tmp);
-			cfg.local_port = atoi(tmp.c_str());
-		}
+		if (key == "type")
+			strcpy(cfg.type, value.c_str());
+		else if (key == "connectArg")
+			strcpy(cfg.connectArg, value.c_str());
+		else if (key == "connectArg2")
+			cfg.connectArg2 = atoi(value.c_str());
+		else if (key == "from_zero")
+			cfg.from_zero = atoi(value.c_str());
+		else if (key == "error_circle")
+			cfg.error_circle = atoi(value.c_str());
+		else if (key == "error_scale")
+			cfg.error_scale = atof(value.c_str());
+		else if (key == "output_360")
+			cfg.output_360 = atoi(value.c_str());
+		else if (key == "service_port")
+			cfg.service_port = atoi(value.c_str());
+		else if (key == "is_open_service")
+			cfg.is_open_service = atoi(value.c_str());
+		else if (key == "is_group_listener")
+			cfg.is_group_listener = atoi(value.c_str());
+		else if (key == "group_ip")
+			strcpy(cfg.group_ip, value.c_str());
+		else if (key == "shadow_filter.enable")
+			cfg.shadows_filter.enable = atoi(value.c_str());
+		else if (key == "shadow_filter.max_range")
+			cfg.shadows_filter.max_range = atoi(value.c_str());
+		else if (key == "shadow_filter.min_angle")
+			cfg.shadows_filter.min_angle = atoi(value.c_str());
+		else if (key == "shadow_filter.max_angle")
+			cfg.shadows_filter.max_angle = atoi(value.c_str());
+		else if (key == "shadow_filter.window")
+			cfg.shadows_filter.window = atoi(value.c_str());
+		else if (key == "median_filter.enable")
+			cfg.median_filter.enable = atoi(value.c_str());
+		else if (key == "median_filter.window")
+			cfg.median_filter.window = atoi(value.c_str());
+		else if (key == "uuid")
+			cfg.uuid = atoi(value.c_str());
+		else if (key == "model")
+			cfg.model = atoi(value.c_str());
+		else if (key == "version")
+			cfg.version = atoi(value.c_str());
+		else if (key == "rpm")
+			cfg.rpm = atoi(value.c_str());
+		else if (key == "resample_res")
+			cfg.resample_res = atoi(value.c_str());
+		else if (key == "with_smooth")
+			cfg.with_smooth = atoi(value.c_str());
+		else if (key == "with_deshadow")
+			cfg.with_deshadow = atoi(value.c_str());
+		else if (key == "with_start")
+			cfg.with_start = atoi(value.c_str());
+		else if (key == "with_confidence")
+			cfg.with_confidence = atoi(value.c_str());
+		else if (key == "unit_is_mm")
+			cfg.unit_is_mm = atoi(value.c_str());
+		else if (key == "alarm_msg")
+			cfg.alarm_msg = atoi(value.c_str());
+		else if (key == "direction")
+			cfg.direction = atoi(value.c_str());
+		else if (key == "ats")
+			cfg.ats = atoi(value.c_str());
+		else if (key == "local_port")
+			cfg.local_port = atoi(value.c_str());
+		else if (key == "filter_open")
+			cfg.separation_filter.filter_open = atoi(value.c_str());
+		else if (key == "max_range")
+			cfg.separation_filter.max_range = atof(value.c_str());
+		else if (key == "min_range")
+			cfg.separation_filter.min_range = atof(value.c_str());
+		else if (key == "max_range_difference")
+			cfg.separation_filter.max_range_difference = atof(value.c_str());
+		else if (key == "filter_window")
+			cfg.separation_filter.filter_window = atoi(value.c_str());
 	}
 	if (cfg.error_scale == 0)
 		cfg.error_scale = 0.9;
@@ -1247,15 +1178,15 @@ bool readConfig(const char* cfg_file_name, RunScript& cfg)
 bool checkPointsLengthZero(UserData *tmp, float scale)
 {
 	int lengthZeroNum = 0;
-	for (int i = 0; i < tmp->data.framedata.N; i++)
+	for (unsigned int i = 0; i < tmp->framedata.data.size(); i++)
 	{
-		if (tmp->data.framedata.data[i].distance == 0)
+		if (tmp->framedata.data[i].distance == 0)
 		{
 			lengthZeroNum++;
 		}
 	}
 	// printf("lengthZeroNum:%d N:%d scale:%f\n", lengthZeroNum, tmp.N, tmp.N * scale);
-	if (tmp->data.framedata.N * scale < lengthZeroNum)
+	if (tmp->framedata.data.size() * scale < lengthZeroNum)
 		return true;
 	return false;
 }

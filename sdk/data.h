@@ -20,6 +20,7 @@
 #include <string>
 #include<stdio.h>
 #include <stdlib.h>
+#include<vector>
 extern "C"
 {
 	#include"third_party/mongoose/mongoose.h"
@@ -29,9 +30,9 @@ extern "C"
 
 #define MAX_LIDARS 8
 #define MAX_FANS  100
-#define MAX_POINTS 500
-#define MAX_FRAMEPOINTS 10000
-#define MAX_FRAMEIDX  1000000 
+#define MAX_POINTS 550
+#define MAX_FRAMEPOINTS 10500
+#define MAX_FRAMEIDX  10000000
 #define HDR_SIZE 6
 #define HDR2_SIZE 8
 #define HDR3_SIZE 16 
@@ -68,7 +69,7 @@ extern "C"
 #define getbit(x,y)   ((x) >> (y)&1)
 #define setbit(x,y) x|=(1<<y)         //将X的第Y位置1
 #define clrbit(x,y) x&=~(1<<y)            //将X的第Y位清0
-
+#define UNUSED(x) (void)(x)
 
 //CN：心跳检测包 EN：Heartbeat detection package
 struct KeepAlive {
@@ -115,9 +116,10 @@ struct SpanData
 };
 struct FrameData
 {
-	unsigned short N;			//CN:扇区内测距点数								EN:The number of ranging points in the sector
+	//unsigned short N;			//CN:扇区内测距点数								EN:The number of ranging points in the sector
 	uint32_t ts[2];				//CN:时间戳(秒和微秒)							EN:timestamps(Second and microseconds )
-	DataPoint data[MAX_FRAMEPOINTS];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
+	std::vector<DataPoint>data;
+	//DataPoint data[MAX_FRAMEPOINTS];//CN:扫描点的具体信息(具体初始化个数由N决定)	EN:The specific information of the scanning point (the specific initialization number is determined by N)
 };
 //最终返回的客户使用的雷达实时数据
 struct UserData
@@ -126,12 +128,9 @@ struct UserData
 	int idx;//0表示扇区序号  1表示帧序号  超过10000000(1千万)帧回拨
 	char connectArg1[16];     //ip/com
 	int connectArg2;		//port /baud
-	union 
-	{
-		SpanData spandata;
-		FrameData framedata;
-	}data;
-	
+	//只有对应模式才有数据
+	SpanData spandata;
+	FrameData framedata;	
 };
 //报警包
 struct LidarMsgHdr
@@ -162,6 +161,15 @@ struct MedianFilterParam
 {
 	int enable;
 	int window;
+};
+//E330系列过滤离异点算法
+struct SeparationFilterParam
+{
+	int filter_open;
+	float max_range;
+	float min_range;
+	float max_range_difference;
+	int filter_window;
 };
 
 /*

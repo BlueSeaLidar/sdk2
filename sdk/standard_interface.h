@@ -4,7 +4,7 @@
 #include "LidarDataProcess.h"
 #include"LidarCheckService.h"
 #include "error.h"
-#define SDKVERSION "3.1" // SDK版本号
+#define SDKVERSION "3.2.1" // SDK版本号
 
 
 class BlueSeaLidarSDK

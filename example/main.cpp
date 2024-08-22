@@ -26,19 +26,19 @@ void CallBackMsg(int msgtype, void *param,int length)
 		UserData *pointdata = (UserData *)param;
 		if (pointdata->type == FRAMEDATA)
 		{
-			//printf("frame idx:%d  %s\t%d \t num:%d timestamp:%d.%d\n", pointdata->idx, pointdata->connectArg1, pointdata->connectArg2, pointdata->data.framedata.N, pointdata->data.framedata.ts[0], pointdata->data.framedata.ts[1]);
-			 //for (int i = 0; i <pointdata->data.framedata.N; i++)
-			 //{
-			 //	printf("%s\t%d \t%.5f\t%.3f\t%d\n", pointdata->connectArg1, pointdata->connectArg2,  pointdata->data.framedata.data[i].angle, pointdata->data.framedata.data[i].distance, pointdata->data.framedata.data[i].confidence);
-			 //}
+			 //printf("frame idx:%d  %s\t%d \t num:%d timestamp:%d.%d\n", pointdata->idx, pointdata->connectArg1, pointdata->connectArg2, pointdata->framedata.data.size(), pointdata->framedata.ts[0], pointdata->framedata.ts[1]);
+			//  for (int i = 0; i <pointdata->framedata.data.size(); i++)
+			//  {
+			//  	printf("%s\t%d \t%.5f\t%.3f\t%d\n", pointdata->connectArg1, pointdata->connectArg2,  pointdata->framedata.data[i].angle, pointdata->framedata.data[i].distance, pointdata->framedata.data[i].confidence);
+			//  }
 		}
 		else
 		{
-			// printf("frame idx:%d  %s\t%d \t num:%d timestamp:%d.%d\n", pointdata->idx, pointdata->connectArg1, pointdata->connectArg2, pointdata->data.spandata.data.N, pointdata->data.spandata.data.ts[0], pointdata->data.spandata.data.ts[1]);
-			// for (int i = 0; i <pointdata->data.spandata.data.N; i++)
-			// {
-			// 	printf("%s\t%d \t%.5f\t%.3f\t%d\n", pointdata->connectArg1, pointdata->connectArg2,  pointdata->data.spandata.data.points[i].angle, pointdata->data.spandata.data.points[i].distance, pointdata->data.spandata.data.points[i].confidence);
-			// }
+			 //printf("span idx:%d  %s\t%d \t num:%d timestamp:%d.%d\n", pointdata->idx, pointdata->connectArg1, pointdata->connectArg2, pointdata->spandata.data.N, pointdata->spandata.data.ts[0], pointdata->spandata.data.ts[1]);
+			//  for (int i = 0; i <pointdata->spandata.data.N; i++)
+			//  {
+			//  	printf("%s\t%d \t%.5f\t%.3f\t%d\n", pointdata->connectArg1, pointdata->connectArg2,  pointdata->spandata.data.points[i].angle, pointdata->spandata.data.points[i].distance, pointdata->spandata.data.points[i].confidence);
+			//  }
 		}
 		break;
 	}
@@ -127,7 +127,7 @@ void CallBackMsg(int msgtype, void *param,int length)
 	// 获取雷达时间戳打印信息(网络款为雷达返回时间戳，串口款为本机接收到的时间戳)
 	case 4:
 	{
-		DevTimestamp *devtimestamp = (DevTimestamp *)param;
+		//DevTimestamp *devtimestamp = (DevTimestamp *)param;
 		//printf("timestamp:lidar_ip:%s lidar_port:%d time:%d delay:%d\n", devtimestamp->ip, devtimestamp->port, devtimestamp->timestamp, devtimestamp->delay);
 		break;
 	}
@@ -186,6 +186,12 @@ int main(int argc, char **argv)
 		if(lidarSDK->GetDevInfo(lidarID,&eepromv101))
 			CallBackMsg(3,&eepromv101,sizeof(EEpromV101));
 		
+		//获取当前在线雷达信息(仅网络款)
+		// std::vector<DevConnInfo> dev =lidarSDK->getLidarsList();
+		// for(int i=0;i<dev.size();i++)
+		// {
+		// 	printf("%s\n",dev[i].conn_ip);
+		// }
 		// 切换防区(仅防区款) 
 		//char zone = '9';
 		//if (!lidarSDK->ZoneSection(lidarID, zone))

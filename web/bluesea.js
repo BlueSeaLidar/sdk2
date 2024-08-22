@@ -69,8 +69,8 @@ function getPointsData() {
             ShowZoneMSG(zone_flag, zone_events, zone_actived);
         }
     }
-    $('#timestamp_s').attr("value", jsondatas.ts[0]);
-    $('#timestamp_us').attr("value", jsondatas.ts[1]);
+    $('#timestamp_s').attr("value", jsondatas.timestamp_s);
+    $('#timestamp_us').attr("value", jsondatas.timestamp_us);
 
     myChart.setOption(option, false);
 
@@ -493,7 +493,7 @@ function MouseWheelHandler(e) {
   option.graphic = jsonarray;
   myChart.setOption(option, false);
 
-  console.log(tmp);
+  //console.log(tmp);
   //保证雷达图的滚轮效果和页面整体的滚轮效果独立
   window.event.preventDefault();
 

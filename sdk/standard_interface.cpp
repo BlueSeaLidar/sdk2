@@ -37,7 +37,7 @@ RunConfig *BlueSeaLidarSDK::getLidar(int ID)
 int BlueSeaLidarSDK::addLidarByPath(const char *cfg_file_name)
 {
 	RunConfig *cfg=new RunConfig;
-	memset(cfg, 0, sizeof(RunConfig));
+	memset((char*)cfg, 0, sizeof(RunConfig));
 	if (readConfig(cfg_file_name, cfg->runscript))
 	{
 		m_idx++;
@@ -90,7 +90,6 @@ bool BlueSeaLidarSDK::openDev(int ID)
 	}
 	if (lidar == NULL)
 		return false;
-
 	if (strcmp(lidar->runscript.type, "uart") == 0 || strcmp(lidar->runscript.type, "vpc") == 0)
 	{
 		int fd = SystemAPI::open_serial_port(lidar->runscript.connectArg, lidar->runscript.connectArg2);
@@ -174,12 +173,10 @@ bool BlueSeaLidarSDK::GetDevInfo(int ID, EEpromV101 *eepromv101)
 		return false;
 
 	lidar->action = GETALLPARAMS;
-
-	char info[1024] = {0};
 	int index = 30;
 	while (lidar->action != FINISH && index > 0)
 	{
-		msleep(100);
+		msleep(200);
 		index--;
 	}
 
@@ -395,7 +392,7 @@ bool BlueSeaLidarSDK::SetUDP(int ID, char *ip, char *mask, char *gateway, int po
 	{
 		return false;
 	}
-	char tmp[64] = {0};
+	char tmp[128] = {0};
 	sprintf(tmp, "LSUDP:%sH", result);
 	lidar->mode = S_PACK;
 	lidar->send_len = strlen(tmp);
@@ -420,7 +417,7 @@ bool BlueSeaLidarSDK::SetDST(int ID, char *ip, int port)
 
 	char result[50] = {0};
 	// 对传入的格式校验
-	if (!BaseAPI::checkAndMerge(0, ip, "", "", port, result))
+	if (!BaseAPI::checkAndMerge(0, ip, (char*)"", (char*)"", port, result))
 	{
 		return false;
 	}

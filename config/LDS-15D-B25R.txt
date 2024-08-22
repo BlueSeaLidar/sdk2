@@ -7,8 +7,6 @@ connectArg:/dev/ttyUSB0
 #baud rate 768000 921600 1000000
 connectArg2:768000
 #data
-data_bytes:3
-with_checksum:1
 output_360:1
 from_zero:0
 service_port:8888

@@ -15,7 +15,7 @@ public:
 	static void getTime_HMS(char*data);
 	void uartDevInfo();
 private:
-	unsigned long m_thread_heart{ 0 };
+	unsigned long m_thread_heart;
 	bool m_close_service;
 
 };

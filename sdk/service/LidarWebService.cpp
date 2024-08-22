@@ -1,10 +1,17 @@
 ﻿#include "LidarCheckService.h"
 #include "LidarWebService.h"
 #include "standard_interface.h"
-static const char *s_debug_level = "2";
+//static const char *s_debug_level = "2";
 static const char *s_root_dir = "web";
-static const char *s_enable_hexdump = "no";
-static const char *s_ssi_pattern = "*";
+//static const char *s_enable_hexdump = "no";
+//static const char *s_ssi_pattern = "*";
+
+static void thread_web(struct mg_connection* c, int ev, void* ev_data, void* fn_data);
+static char* jsonValue(const char* result, const char* message, cJSON* array);
+static void EEpromV101ToStr(EEpromV101* eepromv101, char* version, char* result);
+static void StringReplace(std::string& strBase, std::string strSrc, std::string strDes);
+//static void DevDataToStr(DevData* devdata, int index, char* value);
+
 LidarWebService::LidarWebService(int port)
 {
 	m_port = port;
@@ -154,63 +161,63 @@ static void EEpromV101ToStr(EEpromV101 *eepromv101, char *version, char *result)
 	sprintf(result, "%s", out);
 	free(out);
 }
-void DevDataToStr(DevData *devdata, int index, char *value)
-{
-	memcpy(devdata->set + index, "1", 1);
-	switch (index)
-	{
-	case 0:
-		devdata->RPM = atoi(value);
-		break;
-	case 1:
-		devdata->ERR = atoi(value);
-		break;
-	case 2:
-		memcpy(&devdata->UDP, value, sizeof(devdata->UDP));
-		break;
-	case 3:
-		memcpy(&devdata->DST, value, sizeof(devdata->DST));
-		break;
-	case 4:
-		memcpy(&devdata->NSP, value, sizeof(devdata->NSP));
-		break;
-	case 5:
-		memcpy(&devdata->UID, value, sizeof(devdata->UID));
-		break;
-	case 6:
-		devdata->FIR = atoi(value);
-		break;
-	case 7:
-		devdata->PUL = atoi(value);
-		break;
-	case 8:
-		devdata->VER = atoi(value);
-		break;
-	case 9:
-		devdata->PNP = atoi(value);
-		break;
-	case 10:
-		devdata->SMT = atoi(value);
-		break;
-	case 11:
-		devdata->DSW = atoi(value);
-		break;
-	case 12:
-		devdata->DID = atoi(value);
-		break;
-	case 13:
-		devdata->ATS = atoi(value);
-		break;
-	case 14:
-		devdata->TFX = atoi(value);
-		break;
-	case 15:
-		devdata->PST = atoi(value);
-	case 16:
-		devdata->AF = atoi(value);
-		break;
-	}
-}
+// static void DevDataToStr(DevData *devdata, int index, char *value)
+// {
+// 	memcpy(devdata->set + index, "1", 1);
+// 	switch (index)
+// 	{
+// 	case 0:
+// 		devdata->RPM = atoi(value);
+// 		break;
+// 	case 1:
+// 		devdata->ERR = atoi(value);
+// 		break;
+// 	case 2:
+// 		memcpy(&devdata->UDP, value, sizeof(devdata->UDP));
+// 		break;
+// 	case 3:
+// 		memcpy(&devdata->DST, value, sizeof(devdata->DST));
+// 		break;
+// 	case 4:
+// 		memcpy(&devdata->NSP, value, sizeof(devdata->NSP));
+// 		break;
+// 	case 5:
+// 		memcpy(&devdata->UID, value, sizeof(devdata->UID));
+// 		break;
+// 	case 6:
+// 		devdata->FIR = atoi(value);
+// 		break;
+// 	case 7:
+// 		devdata->PUL = atoi(value);
+// 		break;
+// 	case 8:
+// 		devdata->VER = atoi(value);
+// 		break;
+// 	case 9:
+// 		devdata->PNP = atoi(value);
+// 		break;
+// 	case 10:
+// 		devdata->SMT = atoi(value);
+// 		break;
+// 	case 11:
+// 		devdata->DSW = atoi(value);
+// 		break;
+// 	case 12:
+// 		devdata->DID = atoi(value);
+// 		break;
+// 	case 13:
+// 		devdata->ATS = atoi(value);
+// 		break;
+// 	case 14:
+// 		devdata->TFX = atoi(value);
+// 		break;
+// 	case 15:
+// 		devdata->PST = atoi(value);
+// 	case 16:
+// 		devdata->AF = atoi(value);
+// 		break;
+// 	}
+// }
 static void thread_web(struct mg_connection *c, int ev, void *ev_data, void *fn_data)
 {
 	int id = *(int *)fn_data;
@@ -275,7 +282,7 @@ static void thread_web(struct mg_connection *c, int ev, void *ev_data, void *fn_
 		// 雷达的动作控制
 		else if (mg_http_match_uri(hm, "/action"))
 		{
-			cJSON *arr = cJSON_CreateArray();
+			//cJSON *arr = cJSON_CreateArray();
 			char query[256] = {0};
 			memcpy(query, hm->query.ptr, hm->query.len);
 			char *ret = strstr(query, "cmd=");
@@ -302,7 +309,7 @@ static void thread_web(struct mg_connection *c, int ev, void *ev_data, void *fn_
 		// 雷达点云数据/报警信息
 		else if (mg_http_match_uri(hm, "/data"))
 		{
-			int pointsNum = runcfg->userdata.data.framedata.N;
+			int pointsNum = runcfg->userdata.framedata.data.size();
 			if (pointsNum <= 0 || pointsNum > MAX_FRAMEPOINTS)
 			{
 				char message[64] = {0};
@@ -317,9 +324,12 @@ static void thread_web(struct mg_connection *c, int ev, void *ev_data, void *fn_
 			cJSON *point;
 			cJSON *item = cJSON_CreateNumber(pointsNum);
 			cJSON_AddItemToObject(root, "N", item);
-			item = cJSON_CreateIntArray((int *)runcfg->userdata.data.framedata.ts, 2);
-			cJSON_AddItemToObject(root, "ts", item);
-			FrameData *framedata = &runcfg->userdata.data.framedata;
+
+			item = cJSON_CreateNumber(runcfg->userdata.framedata.ts[0]);
+			cJSON_AddItemToObject(root, "timestamp_s", item);
+			item = cJSON_CreateNumber(runcfg->userdata.framedata.ts[1]);
+			cJSON_AddItemToObject(root, "timestamp_us", item);
+			FrameData *framedata = &runcfg->userdata.framedata;
 			for (int i = 0; i < pointsNum; i++)
 			{
 				point = cJSON_CreateObject();
@@ -536,7 +546,7 @@ static void thread_web(struct mg_connection *c, int ev, void *ev_data, void *fn_
 		{
 			mg_http_serve_opts opts = {0};
 			opts.root_dir = s_root_dir;
-			struct mg_http_message tmp = {0};
+			//struct mg_http_message tmp = {0};
 			mg_http_serve_dir(c, hm, &opts);
 		}
 	}

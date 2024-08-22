@@ -67,37 +67,37 @@ std::string BaseAPI::stringfilter(char *str, int num)
     return "";
 }
 
-int AlgorithmAPI_E100::ShadowsFilter(UserData* scan_in, const ShadowsFilterParam& param)
+int AlgorithmAPI::ShadowsFilter(UserData* scan_in, const ShadowsFilterParam& param)
 {
-	double angle_increment = PI * 2 / scan_in->data.framedata.N;
+	double angle_increment = PI * 2 / scan_in->framedata.data.size();
 
 	std::set<int> indices_to_delete;
 
-	for (int i = 0; i < scan_in->data.framedata.N - param.window - 1; i++)
+	for (unsigned int i = 0; i < scan_in->framedata.data.size() - param.window - 1; i++)
 	{
-		if (scan_in->data.framedata.data[i].distance < 0.002) continue;
+		if (scan_in->framedata.data[i].distance < 0.002) continue;
 
 		for (int y = 1; y < param.window + 1; y++)
 		{
 			int j = i + y;
-			if (j < 0 || j >= (int)scan_in->data.framedata.N || (int)i == j)
+			if (j < 0 || j >= (int)scan_in->framedata.data.size()|| (int)i == j)
 				continue;
-			if (scan_in->data.framedata.data[j].distance < 0.002)
+			if (scan_in->framedata.data[j].distance < 0.002)
 				continue;
-			if (fabs(scan_in->data.framedata.data[i].distance -
-				scan_in->data.framedata.data[j].distance) < 0.2)
+			if (fabs(scan_in->framedata.data[i].distance -
+				scan_in->framedata.data[j].distance) < 0.2)
 				continue;
 
 			double rad = getAngleWithViewpoint(
-				scan_in->data.framedata.data[i].distance,
-				scan_in->data.framedata.data[j].distance,
+				scan_in->framedata.data[i].distance,
+				scan_in->framedata.data[j].distance,
 				y * angle_increment);
 
 			double angle = abs(rad * 180 / PI);
 			if (angle < param.min_angle || angle > param.max_angle)
 			{
 				int from, to;
-				if (scan_in->data.framedata.data[i].distance < scan_in->data.framedata.data[j].distance)
+				if (scan_in->framedata.data[i].distance < scan_in->framedata.data[j].distance)
 				{
 					from = i + 1;
 					to = j;
@@ -124,7 +124,7 @@ int AlgorithmAPI_E100::ShadowsFilter(UserData* scan_in, const ShadowsFilterParam
 	for (std::set<int>::iterator it = indices_to_delete.begin(); it != indices_to_delete.end(); ++it)
 	{
 		//scan_in->points[*it].distance = std::numeric_limits<float>::quiet_NaN();
-		scan_in->data.framedata.data[*it].distance = 0;
+		scan_in->framedata.data[*it].distance = 0;
 		nr++;
 	}
 
@@ -132,15 +132,15 @@ int AlgorithmAPI_E100::ShadowsFilter(UserData* scan_in, const ShadowsFilterParam
 }
 
 
-int AlgorithmAPI_E100::MedianFilter(UserData* scan_in, const MedianFilterParam& param)
+int AlgorithmAPI::MedianFilter(UserData* scan_in, const MedianFilterParam& param)
 {
-	int* dists = new int[scan_in->data.framedata.N];
+	int* dists = new int[scan_in->framedata.data.size()];
 	int* buf = new int[param.window * 2 + 1];
 
-	for (unsigned int i = 0; i < scan_in->data.framedata.N; i++)
-		dists[i] = scan_in->data.framedata.data[i].distance * 1000;
+	for (unsigned int i = 0; i < scan_in->framedata.data.size(); i++)
+		dists[i] = scan_in->framedata.data[i].distance * 1000;
 
-	for (int i = param.window; i < scan_in->data.framedata.N - param.window - 1; i++)
+	for (unsigned int i = param.window; i < scan_in->framedata.data.size() - param.window - 1; i++)
 	{
 		if (dists[i] == 0) continue;
 
@@ -155,7 +155,7 @@ int AlgorithmAPI_E100::MedianFilter(UserData* scan_in, const MedianFilterParam& 
 		if (n > 2)
 		{
 			qsort(buf, n, sizeof(int), int_cmper);
-			scan_in->data.framedata.data[i].distance = (float)(buf[param.window] / 1000.0);
+			scan_in->framedata.data[i].distance = (float)(buf[param.window] / 1000.0);
 		}
 	}
 
@@ -232,7 +232,7 @@ static bool GetData0xC7(const RawDataHdr7& hdr, uint8_t* pdat, bool with_chk, Ra
 		*last_fan_seg = fan_seg;
 	}
 
-	int N = GetFanPointCount((*last_fan_seg));
+	unsigned int N = GetFanPointCount((*last_fan_seg));
 
 	if (N >= (*last_fan_seg)->hdr.whole_fan)
 	{
@@ -509,11 +509,14 @@ bool GetData0x99(const RawDataHdr99& hdr, unsigned char* pdat, int with_chk, Raw
 
 
 
-int ParseAPI::parse_data_x(int len, unsigned char* buf,UartState *uartstate, RawData& dat, int& consume, int with_chk, char*result, CmdHeader *cmdheader,void** fan_segs)
+int ParseAPI::parse_data_x(unsigned int len, unsigned char* buf,UartState *uartstate, RawData& dat, int& consume, int with_chk,int &byte,char*result, CmdHeader *cmdheader,void** fan_segs)
 {
-	int pack_format = 0xce;
-	int idx = 0;
-    int span=360;
+	int span=180;
+	int pack_format=0xce;
+	unsigned int idx = 0;
+	UNUSED(span);
+	UNUSED(pack_format);
+
     while (idx < len - 12)
 	{
         //qDebug()<<hex<<buf[idx]<<buf[idx+1]<<(unsigned char)buf[idx+2]<<(unsigned char)buf[idx+3]<<endl;
@@ -582,10 +585,16 @@ int ParseAPI::parse_data_x(int len, unsigned char* buf,UartState *uartstate, Raw
             uartstate->span_18 = flag & 0x20;
             uartstate->span_other = flag & 0x40;
             uartstate->resampele = flag & 0x80;
+			
             if(flag & 0x10)
                 span = 180;
             if(flag & 0x20)
                 span = 90;
+
+			if(uartstate->with_conf)
+                byte=3;
+            else
+                byte=2;
             consume = idx + 8;
             return 9;
 		}
@@ -703,11 +712,13 @@ int ParseAPI::parse_data_x(int len, unsigned char* buf,UartState *uartstate, Raw
     return -1;
 }
 
-int ParseAPI::parse_data(int len, unsigned char* buf,UartState *uartstate,RawData& dat, int& consume, int with_chk)
+int ParseAPI::parse_data(unsigned int len, unsigned char* buf,UartState *uartstate,RawData& dat, int& consume, int with_chk)
 {
-	int idx = 0;
+	unsigned int idx = 0;
 	int pack_format = 0xce;
     int span=360;
+	UNUSED(span);
+	UNUSED(pack_format);
 	while (idx < len - 180)
 	{
 		if (buf[idx] == 'S' && buf[idx + 1] == 'T' && buf[idx + 6] == 'E' && buf[idx + 7] == 'D')
@@ -1235,7 +1246,7 @@ int SystemAPI::GetComList(std::vector<UARTARG>& list)
 		for (unsigned int j = 0; j < port_list.size(); j++)
 		{
 			int com_speed = port_list.at(j);
-			if (int ret = GetDevInfoByUART(portNames.at(i).c_str(), com_speed))
+			if (GetDevInfoByUART(portNames.at(i).c_str(), com_speed))
 			{
 				arg.port = com_speed;
 				strcpy(arg.portName, portNames.at(i).c_str());
@@ -1251,7 +1262,7 @@ int SystemAPI::GetComList(std::vector<UARTARG>& list)
 		}
 
 		int com_speed = 12345;
-		if (int ret = GetDevInfoByVPC(portNames.at(i).c_str(), com_speed))
+		if (GetDevInfoByVPC(portNames.at(i).c_str(), com_speed))
 		{
 			strcpy(arg.portName, portNames.at(i).c_str());
 			arg.port = -1;
@@ -1263,8 +1274,6 @@ int SystemAPI::GetComList(std::vector<UARTARG>& list)
 int GetDevInfoByUART(const char* port_str, int speed)
 {
 	int zeroNum = 0;
-	unsigned long  wf = 0, rf = 0;
-
 	unsigned int check_size = 4096;
 	int hPort = SystemAPI::open_serial_port(port_str, speed);
 	if (hPort <= 0) {
@@ -1272,9 +1281,10 @@ int GetDevInfoByUART(const char* port_str, int speed)
 	}
 
 	char cmd[] = "LUUIDH";
-	wf = write(hPort, cmd, sizeof(cmd));
+	write(hPort, cmd, sizeof(cmd));
 	int bOK = false;
 	unsigned char* buf = new unsigned char[check_size];
+	unsigned long  rf = 0;
 	while (rf < check_size)
 	{
 		int  tmp = read(hPort, buf + rf, check_size - rf);
@@ -1687,78 +1697,98 @@ void CommunicationAPI::send_cmd_vpc(int hCom, int mode, int sn, int len, const c
 	write(hCom, buffer, len2);
 }
 
-bool CommunicationAPI::uart_talk(int fd, int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch)
+bool CommunicationAPI::uart_talk(int fd, int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch,int waittime)
 {
 	printf("send command : %s\n", cmd);
-	write(fd, cmd, n);
+    write(fd, cmd, n);
 
-	char buf[2048];
-	int nr = read(fd, buf, sizeof(buf));
-	while (nr < (int)sizeof(buf))
-	{
-		int n = read(fd, buf + nr, sizeof(buf) - nr);
-		if (n > 0)
-			nr += n;
-	}
-	for (int i = 0; i < (int)sizeof(buf) - nhdr - nfetch; i++)
-	{
-		if (memcmp(buf + i, hdr_str, nhdr) == 0)
-		{
-			if (nfetch > 0)
-			{
-				if (strcmp(cmd, "LXVERH") == 0 || strcmp(cmd, "LUUIDH") == 0 || strcmp(cmd, "LTYPEH") == 0)
-				{
-					memcpy(fetch, buf + i + nhdr, nfetch);
-					fetch[nfetch] = 0;
-				}
-				else if(strstr(cmd, "LSRPM")!=NULL)
-				{
-					if(buf[i + nhdr+1]=='O'&&buf[i + nhdr+2]=='K')
-					{
-						strcpy(fetch, "OK");
-						fetch[3] = 0;
-					}
-					else if(buf[i + nhdr+1]=='e'&&buf[i + nhdr+2]=='r')
-					{
-						strcpy(fetch, "NG");
-						fetch[3] = 0;
-					}
-				}
-				else
-				{
-					strcpy(fetch, "OK");
-					fetch[3] = 0;
-				}
-			}
-			return true;
-		}
-		else if (memcmp(buf + i, cmd, n) == 0)
-		{
-			if (nfetch > 0)
-			{
-				memcpy(fetch, buf + i + n + 1, 2);
-				if(buf[ i + n + 1]=='E'&&buf[ i + n + 2]=='R') 
-				{
-					fetch[0]='N';
-					fetch[1]='G';
-				}
-				fetch[2] = 0;
-			}
-			return true;
-		}
-		else if (memcmp(buf + i, "unsupport", 9) == 0)
-		{
-			if (nfetch > 0)
-			{
-				strcpy(fetch, "unsupport"); 
-				fetch[10] = 0;
-			}
-			return true;
-		}
-	}
+    char buf[4096];
+    int nr =  read(fd, buf, sizeof(buf));
+    int idx=waittime;
+    while (nr < (int)sizeof(buf))
+    {
+        int n =  read(fd, buf + nr, sizeof(buf) - nr);
+        //printf(" fd %d %d \n",n,nr);
+        if (n > 0)
+        {
+            nr += n;
+            idx=waittime;
+        }
+        else if(n==0)
+        {
+            idx--;
+            msleep(1);
+            if(idx==0)
+            {
+                //printf("read 0 byte max index break\n");
+                break;
+            }
+        }
+    }
+    // if(idx>0)
+    //     printf("read max byte break\n");
 
-	printf("read %d bytes, not found %s\n", nr, hdr_str);
-	return false;
+    for (unsigned int i = 0; i <sizeof(buf) - nhdr - nfetch; i++)
+    {
+        if (memcmp(buf + i, hdr_str, nhdr) == 0&&nhdr>0)
+        {
+            if (nfetch > 0)
+            {
+                if (strcmp(cmd, "LXVERH") == 0 || strcmp(cmd, "LUUIDH") == 0 || strcmp(cmd, "LTYPEH") == 0|| strcmp(cmd, "LQAZNH") == 0
+                        || strcmp(cmd, "LQPSTH") == 0|| strcmp(cmd, "LQNPNH") == 0|| strcmp(cmd, "LQOUTH") == 0|| strcmp(cmd, "LQCIRH") == 0|| strcmp(cmd, "LQFIRH") == 0
+                        || strcmp(cmd, "LQSRPMH") == 0||strcmp(cmd, "LQSMTH") == 0||strcmp(cmd, "LQDSWH") == 0||strcmp(cmd, "LQZTPH") == 0||strcmp(cmd, "LQSAFH") == 0)
+                {
+                    memcpy(fetch, buf + i + nhdr, nfetch);
+                    fetch[nfetch] = 0;
+                }
+                else if(strstr(cmd, "LSRPM")!=NULL)
+                {
+                    if(buf[i + nhdr+1]=='O'&&buf[i + nhdr+2]=='K')
+                    {
+                        strncpy(fetch, "OK",3);
+                        fetch[3] = 0;
+                    }
+                    else if(buf[i + nhdr+1]=='e'&&buf[i + nhdr+2]=='r')
+                    {
+                        strncpy(fetch, "NG",3);
+                        fetch[3] = 0;
+                    }
+                }
+                else
+                {
+                    strncpy(fetch, "OK",3);
+                    fetch[3] = 0;
+                }
+            }
+            return true;
+        }
+        else if (memcmp(buf + i, cmd, n) == 0)
+        {
+            if (nfetch > 0)
+            {
+                memcpy(fetch, buf + i + n + 1, 2);
+                if(buf[ i + n + 1]=='E'&&buf[ i + n + 2]=='R')
+                {
+                    fetch[0]='N';
+                    fetch[1]='G';
+                }
+                fetch[2] = 0;
+            }
+            return true;
+        }
+        else if (memcmp(buf + i, "unsupport", 9) == 0)
+        {
+            if (nfetch > 0)
+            {
+                strcpy(fetch, "unsupport");
+                fetch[10] = 0;
+            }
+            return true;
+        }
+    }
+
+    printf("read %d bytes, not found %s\n", nr, hdr_str);
+    return false;
 }
 
 bool CommunicationAPI::vpc_talk(int hcom, int mode, short sn, int len, const char* cmd, int nfetch, void* result)
@@ -2020,7 +2050,7 @@ bool CommunicationAPI::udp_talk_C_PACK(int fd_udp, const char* lidar_ip, int lid
 			}
 		}
 	}
-	printf("read %d packets, not response\n", ntry);
+	printf("read %d packets, not response  \n", ntry);
 	return false;
 }
 
@@ -2193,4 +2223,93 @@ static void PackFanData(FanSegment_AA* seg, RawData& rdat)
 		seg = seg->next;
 	}
 	//return dat;
+}
+bool checkWindowValid2(std::vector<DataPoint> scan, size_t idx, size_t window, double max_distance,double angle_increment)
+{
+  unsigned int num_neighbors = 0;
+  const float r1 = scan.at(idx).distance; // 当前点云的距离数据
+  float r2 = 0.;                      // 范围内点云的数据
+  // Look around the current point until either the window is exceeded
+  // or the number of neighbors was found.
+  for (int y = -window; y < (int)window + 1 && num_neighbors < window; y++)
+  {
+    int j = idx + y;
+    if (j < 0 || j >= (int)scan.size()||(int)idx == j)
+    {
+      continue;
+    }
+    r2 = scan.at(j).distance; 
+    if(r2==0)
+      continue;
+    // delete the re in the result
+    const float d = sqrt(pow(r1, 2) + pow(r2, 2) -(2 * r1 * r2 * cosf(y * angle_increment)));
+
+    if (d <= max_distance)
+    {
+      num_neighbors++;
+    }
+  }
+  //printf("%s %d\n", __FUNCTION__, __LINE__);
+  // consider the window to be the number of neighbors we need
+  if (num_neighbors < window)
+  // if(num_neighbors == 0)//only the window is one
+  {
+    return false; // invalid
+  }
+  else
+  {
+    return true; // effective
+  }
+}
+
+bool AlgorithmAPI::filter(std::vector<DataPoint>  &output_scan, double max_range, double min_range, double max_range_difference, int filter_window,double angle_increment)
+{
+  std::vector<bool> valid_ranges;
+  /*Check if range size is big enough to use7 the filter window */
+  if (output_scan.size() <= (size_t)filter_window + 1)
+  {
+    printf("Scan ranges size is too small: size = %ld", output_scan.size());
+    return false;
+  }
+
+  size_t i = 0;
+  size_t i_max = output_scan.size();
+  valid_ranges.clear();
+  while (i < i_max)
+  {
+    bool out_of_range = ((output_scan.at(i).distance > max_range) || (output_scan.at(i).distance < min_range));
+    // ROS_INFO("%lf", min_range);
+    valid_ranges.push_back(out_of_range);
+    ++i;
+  }
+
+  i = 0;
+  i_max = output_scan.size() - filter_window + 1;
+  while (i < i_max)
+  {
+    bool window_valid = checkWindowValid2(output_scan, i, filter_window, max_range_difference,angle_increment);
+    if (window_valid)
+    {
+      size_t j = i, j_max = i + filter_window;
+      do
+      {
+        valid_ranges[j++] = true;
+      } while (j < j_max);
+    }
+    ++i;
+  }
+  i = 0;
+  i_max = valid_ranges.size();
+  int errnum=0;
+  while (i < i_max)
+  {
+    if (!valid_ranges[i])
+    {
+      output_scan[i].distance = 0;
+      errnum++;
+    }
+    ++i;
+  }
+  //printf("%ld not valid num:%d\n",i,errnum);
+  return true;
 }

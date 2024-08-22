@@ -4,8 +4,8 @@
 #include <vector>
 #include<string>
 #include<math.h>
-#pragma warning(disable:4996)
 #ifdef _WIN32
+#pragma warning(disable:4996)
 #include<Windows.h>
 #ifndef sleep(sec)   Sleep(sec * 1000)
 #define sleep(sec)   Sleep(sec * 1000)
@@ -21,7 +21,6 @@
 #include <termios.h>
 #define msleep(msec) usleep(msec * 1000)
 #endif
-#define UNUSED(x) (void)x
 struct UARTARG
 {
     char portName[16];
@@ -34,9 +33,9 @@ namespace BaseAPI {
 }
 
 namespace ParseAPI {
-    int parse_data_x(int len, unsigned char* buf,UartState *uartstate,
-    RawData& dat, int& consume, int with_chk, char *result,CmdHeader *cmdheader,void** fan_segs);
-    int parse_data(int len, unsigned char* buf,UartState *uartstate,RawData& dat, int& consume, int with_chk);
+    int parse_data_x(unsigned int len, unsigned char* buf,UartState *uartstate,
+    RawData& dat, int& consume, int with_chk,int &byte, char *result,CmdHeader *cmdheader,void** fan_segs);
+    int parse_data(unsigned int len, unsigned char* buf,UartState *uartstate,RawData& dat, int& consume, int with_chk);
 }
 
 namespace UserAPI {
@@ -46,10 +45,12 @@ namespace UserAPI {
     int autoGetFirstAngle(const RawData &raw, bool from_zero, std::vector<RawData> &raws,std::string &error);
 }
 
-namespace AlgorithmAPI_E100 {
-
+namespace AlgorithmAPI{
+    //E100
     int ShadowsFilter(UserData*, const ShadowsFilterParam&);
     int MedianFilter(UserData*, const MedianFilterParam&);
+    //E330
+    bool filter(std::vector<DataPoint>& output_scan,double max_range,double min_range,double max_range_difference,int filter_window,double angle_increment);
 }
 
 namespace SystemAPI {
@@ -67,7 +68,7 @@ int GetDevInfoByUART(const char* port_str, int speed);
 
 namespace CommunicationAPI {
     void send_cmd_vpc(int hCom, int mode, int sn, int len, const char* cmd);
-    bool uart_talk(int hCom, int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch);
+    bool uart_talk(int hCom, int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch,int waittime=100);
     bool vpc_talk(int hCom, int mode, short sn, int len, const char* cmd, int nfetch, void* fetch);
     void send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port, int cmd, int sn, int len, const void* snd_buf);
     bool udp_talk_C_PACK(int fd_udp, const char* lidar_ip, int lidar_port, int n, const char* cmd, int nhdr, const char* hdr_str, int nfetch, char* fetch);

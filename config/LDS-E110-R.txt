@@ -4,11 +4,12 @@ type:uart
 #connectArg:com1
 #linux com name
 connectArg:/dev/ttyUSB0
-#baud rate 500000 768000 921600
-connectArg2:500000
+connectArg2:230400
 #data
 output_360:1
 from_zero:0
+is_group_listener:0
+group_ip:224.0.0.99
 service_port:8888
 is_open_service:1
 error_circle:3

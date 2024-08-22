@@ -76,7 +76,6 @@ void uptodate(DevConnInfo data)
 		m_infos.push_back(data);
 		return ;
 	}
-	int i = 0;
 	for (unsigned i = 0; i < m_infos.size(); i++)
 	{
 		//如果是同一个雷达则覆盖

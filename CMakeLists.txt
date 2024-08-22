@@ -44,8 +44,6 @@ set(CMAKE_CONFIGURATION_TYPES Debug)
 #所有的头文件目录
 include_directories ("${PROJECT_SOURCE_DIR}/sdk")
 include_directories ("${PROJECT_SOURCE_DIR}/sdk/service")
-include_directories ("${PROJECT_SOURCE_DIR}/sdk/third_party/cJson")
-include_directories ("${PROJECT_SOURCE_DIR}/sdk/third_party/mongoose")
 #加载指定目录下的指定格式文件集
 file(GLOB_RECURSE SOURCE_FILES ${PROJECT_SOURCE_DIR}/sdk/*.cpp  ${PROJECT_SOURCE_DIR}/sdk/*.c  ${PROJECT_SOURCE_DIR}/example/main.cpp)
 file(GLOB_RECURSE HEADER_FILES  ${PROJECT_SOURCE_DIR}/sdk/*.h  ${PROJECT_SOURCE_DIR}/sdk/*.hpp)

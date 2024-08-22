@@ -47,13 +47,12 @@ struct RunScript
 	int connectArg2;//port/baud
 	int local_port;
 	//data
-	char logPath[256];
-    int data_bytes;
 	int from_zero;
-	int with_chk;			//CN:数据校验(0:关闭 1:打开)			EN:Data check (0: close 1: open)
+	int output_360;			//CN:扇形打印(0:部分扇形打印  1：完成的)EN:Fan printing (0: Partial fan printing 1: Completed)
+
 	int error_circle;		//CN:检测长度为0的圈数					EN:Detect the number of turns with a length of 0
 	double error_scale;		//CN:检测长度为0的比例					EN:Detect the Scale of turns with a length of 0
-	int output_360;			//CN:扇形打印(0:部分扇形打印  1：完成的)EN:Fan printing (0: Partial fan printing 1: Completed)
+
 	int service_port;		//CN:本地服务启用端口					EN:Local service enable port
 	int is_open_service;	//CN:是否启用本地服务					EN:Enable local service
 	//udp
@@ -63,6 +62,8 @@ struct RunScript
 	// E120 scan filter
 	ShadowsFilterParam shadows_filter;
 	MedianFilterParam median_filter;
+	//E330 scan filter
+	SeparationFilterParam separation_filter;
 	//get
 	int uuid;
 	int model;
