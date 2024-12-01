@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.10)
 
 #设置生成的VS项目文件结构和本地文件目录一样
 function(assign_source_group)
@@ -24,8 +24,8 @@ endfunction(my_add_executable)
 #工程名称
 project(bluesea)
 #C++98  C99
-set(CMAKE_CXX_STANDARD 98)
-set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED True)
 IF (UNIX)
 # 添加对gdb的支持
@@ -55,12 +55,12 @@ IF (UNIX)
   #获取最终编译需要的文件集
   #list(REMOVE_ITEM SOURCE_FILES ${REMOVE_SOURCES})
   #list(REMOVE_ITEM HEADER_FILES ${REMOVE_HEADERS})
-  
+  find_package(Threads REQUIRED)
   source_group("Include" FILES ${HEADER_FILES})
   #编译生成可执行文件demo
   my_add_executable(demo ${SOURCE_FILES} ${HEADER_FILES})
   #添加链接库pthread
-  target_link_libraries(demo m pthread )
+  target_link_libraries(demo m Threads::Threads)
 ELSEIF (WIN32)
   #同上
   file(GLOB_RECURSE REMOVE_SOURCES  "${PROJECT_SOURCE_DIR}/sdk/uart.c")
