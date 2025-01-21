@@ -82,6 +82,53 @@ bool setup_lidar_udp(int fd_udp, RunScript *arg)
 		}
 	}
 
+	if (arg->ntp_enable >= 0)
+	{
+		bool ret = judgepcIPAddrIsValid(arg->ntp_ip);
+		if (!ret)
+		{
+			printf("ntp ip set error!");
+		}
+		else
+		{
+			char cmd[64];
+			char ip_1[4];
+			char ip_2[4];
+			char ip_3[4];
+			char ip_4[4];
+			ip_1[3] = '\0';
+			ip_2[3] = '\0';
+			ip_3[3] = '\0';
+			ip_4[3] = '\0';
+
+			int idx[3];
+			int index = 0;
+			int ip_len = strlen(arg->ntp_ip);
+			for (int i = 0; i < ip_len; i++)
+			{
+				if (arg->ntp_ip[i] == '.')
+				{
+					idx[index] = i;
+					index++;
+				}
+			}
+			memcpy(ip_1, &arg->ntp_ip[0], idx[0]);
+			memcpy(ip_2, &arg->ntp_ip[idx[0] + 1], idx[1] - idx[0] - 1);
+			memcpy(ip_3, &arg->ntp_ip[idx[1] + 1], idx[2] - idx[1] - 1);
+			memcpy(ip_4, &arg->ntp_ip[idx[2] + 1], ip_len - idx[2]);
+			sprintf(cmd, "LSNTP:%d,%03d.%03d.%03d.%03d,%05dH", arg->ntp_enable, atoi(ip_1), atoi(ip_2), atoi(ip_3), atoi(ip_4), arg->ntp_port);
+			// printf(" 1:%s 2:%s 3:%s 4:%s   5:%s\n",ip_1,ip_2,ip_3,ip_4,cmd);
+			if (CommunicationAPI::udp_talk_S_PACK(fd_udp, arg->connectArg, arg->connectArg2, strlen(cmd), cmd, result))
+			{
+				printf("set LiDAR ntp %s\n", result);
+			}
+			else
+			{
+				printf("set LiDAR ntp NG\n");
+			}
+		}
+	}
+
 	if (arg->resample_res > 0)
 	{
 		// resample == 0  非固定角分辨率不适用于网络包计算
@@ -188,8 +235,8 @@ void *lidar_thread_proc_uart(void *param)
 	else
 		setup_lidar_vpc(cfg->fd, &cfg->runscript);
 
-	//sprintf(info, "All params set OK ! Start parser data");
-	//cfg->callback(8, info, strlen(info) + 1);
+	// sprintf(info, "All params set OK ! Start parser data");
+	// cfg->callback(8, info, strlen(info) + 1);
 
 	/*
 	 * 4, read and parser data
@@ -242,7 +289,7 @@ void *lidar_thread_proc_uart(void *param)
 		if (buf_len > 0)
 		{
 			int consume = 0; // in order to compute the rest of data after every parser process
-			//int res = -1;
+			// int res = -1;
 			RawData dat;
 			if (data_bytes == 3)
 			{
@@ -267,7 +314,7 @@ void *lidar_thread_proc_uart(void *param)
 					{
 						collect_angle = state;
 						cfg->action = ONLINE;
-						sprintf(info, "Lidar start work,first span angle is %d", collect_angle/10);
+						sprintf(info, "Lidar start work,first span angle is %d", collect_angle / 10);
 						cfg->callback(8, info, strlen(info) + 1);
 					}
 					break;
@@ -522,7 +569,8 @@ void *lidar_thread_proc_uart(void *param)
 			// 说明运行正常
 			break;
 		}
-		default:break;
+		default:
+			break;
 		}
 	}
 	SystemAPI::closefd(cfg->fd, false);
@@ -739,6 +787,7 @@ int setup_lidar_uart(int fd_uart, RunScript *arg, EEpromV101 *eepromv101, char *
 			}
 		}
 	}
+
 	// setup rpm  (The specific model range is different)
 	if (arg->rpm >= 0)
 	{
@@ -777,7 +826,7 @@ void *lidar_thread_proc_udp(void *param)
 	std::string error;
 	UartState uartstate;
 	CmdHeader cmdheader;
-	char result[512] = {0}; 
+	char result[512] = {0};
 	char info[512] = {0};
 	if (cfg->runscript.is_group_listener == 1)
 	{
@@ -804,8 +853,8 @@ void *lidar_thread_proc_udp(void *param)
 		setup_lidar_udp(cfg->fd, &cfg->runscript);
 	}
 
-	//sprintf(info, "All params set OK ! Start parser data");
-	//cfg->callback(8, info, strlen(info) + 1);
+	// sprintf(info, "All params set OK ! Start parser data");
+	// cfg->callback(8, info, strlen(info) + 1);
 	unsigned char *buf = new unsigned char[BUF_SIZE];
 	struct timeval tv, start_tv;
 	gettimeofday(&tv, NULL);
@@ -861,7 +910,7 @@ void *lidar_thread_proc_udp(void *param)
 			if (buf_len > 0)
 			{
 				int consume = 0; // in order to compute the rest of data after every parser process
-				//int res = -1;
+				// int res = -1;
 				RawData dat;
 				if (data_bytes == 3)
 				{
@@ -885,7 +934,7 @@ void *lidar_thread_proc_udp(void *param)
 							whole_datas.clear();
 							collect_angle = state;
 							cfg->action = ONLINE;
-							sprintf(info, "Lidar start work,first span angle is %d", collect_angle/10);
+							sprintf(info, "Lidar start work,first span angle is %d", collect_angle / 10);
 							cfg->callback(8, info, strlen(info) + 1);
 						}
 						break;
@@ -1063,7 +1112,8 @@ void *lidar_thread_proc_udp(void *param)
 		{
 			break;
 		}
-		default:break;
+		default:
+			break;
 		}
 	}
 	printf("%d\n", cfg->state);
@@ -1165,6 +1215,12 @@ bool readConfig(const char *cfg_file_name, RunScript &cfg)
 			cfg.separation_filter.max_range_difference = atof(value.c_str());
 		else if (key == "filter_window")
 			cfg.separation_filter.filter_window = atoi(value.c_str());
+		else if (key == "ntp_ip")
+			strcpy(cfg.ntp_ip, value.c_str());
+		else if (key == "ntp_port")
+			cfg.ntp_port = atoi(value.c_str());
+		else if (key == "ntp_enable")
+			cfg.ntp_enable = atoi(value.c_str());
 	}
 	if (cfg.error_scale == 0)
 		cfg.error_scale = 0.9;

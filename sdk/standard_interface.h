@@ -4,7 +4,7 @@
 #include "LidarDataProcess.h"
 #include"LidarCheckService.h"
 #include "error.h"
-#define SDKVERSION "3.2.1" // SDK版本号
+#define SDKVERSION "3.2.2" // SDK版本号
 
 
 class BlueSeaLidarSDK
@@ -209,6 +209,21 @@ public:
 	 * @others:        Repeatable, different from ID
 	 *************************************************/
 	bool SetDID(int ID,unsigned int number);
+
+	/************************************************
+	 * @functionName:  SetNTP
+	 * @date:          2025-01-17
+	 * @description:   CN:设置雷达ntp参数  EN:set lidar ntp property
+	 * @Parameter:		1.ID [long,IN]  CN: 雷达ID  EN:Lidar ID
+	 *					2.ntp_ip[char*,IN]   CN：雷达的ntp ip  EN:lidar ntp upload ip   
+	 *					3.ntp_port[unsigned int,IN]   CN：雷达的ntp上传端口  EN:lidar ntp upload port     
+	 *					4.enable[bool,IN]   CN：使能  EN:enable    
+	 * @return:        true/false
+	 * @others:        Repeatable, different from ID
+	 *************************************************/
+	bool SetNTP(int ID,char*ntp_ip,unsigned int port,bool enable);
+
+
 	/************************************************
 	 * @functionName:  getLidarsList
 	 * @date:          2023-12-13

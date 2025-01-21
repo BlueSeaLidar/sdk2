@@ -1,18 +1,19 @@
 ﻿#include "standard_interface.h"
 #include "service/LidarWebService.h"
-BlueSeaLidarSDK *BlueSeaLidarSDK::m_sdk = new (std::nothrow) BlueSeaLidarSDK();;
+BlueSeaLidarSDK *BlueSeaLidarSDK::m_sdk = new (std::nothrow) BlueSeaLidarSDK();
+;
 
-BlueSeaLidarSDK * BlueSeaLidarSDK ::getInstance()
+BlueSeaLidarSDK *BlueSeaLidarSDK ::getInstance()
 {
 	return m_sdk;
 }
 void BlueSeaLidarSDK::deleteInstance()
 {
 	if (m_sdk)
-    {
-        delete m_sdk;
-        m_sdk = NULL;
-    }
+	{
+		delete m_sdk;
+		m_sdk = NULL;
+	}
 }
 
 BlueSeaLidarSDK::BlueSeaLidarSDK()
@@ -36,8 +37,8 @@ RunConfig *BlueSeaLidarSDK::getLidar(int ID)
 }
 int BlueSeaLidarSDK::addLidarByPath(const char *cfg_file_name)
 {
-	RunConfig *cfg=new RunConfig;
-	memset((char*)cfg, 0, sizeof(RunConfig));
+	RunConfig *cfg = new RunConfig;
+	memset((char *)cfg, 0, sizeof(RunConfig));
 	if (readConfig(cfg_file_name, cfg->runscript))
 	{
 		m_idx++;
@@ -107,7 +108,6 @@ bool BlueSeaLidarSDK::openDev(int ID)
 			return false;
 
 #endif
-
 	}
 	else if (strcmp(lidar->runscript.type, "udp") == 0)
 	{
@@ -142,10 +142,10 @@ bool BlueSeaLidarSDK::openDev(int ID)
 			printf("Open web thread failed,port:%d\n", lidar->runscript.service_port);
 			return false;
 		}
-		//启动雷达心跳包线程以及检测当前在线雷达数量
+		// 启动雷达心跳包线程以及检测当前在线雷达数量
 		OpenHeartService();
 	}
-	//判定数据线程是否正常运行
+	// 判定数据线程是否正常运行
 	int index = 100;
 	while (lidar->action < ONLINE && index > 0)
 	{
@@ -154,7 +154,6 @@ bool BlueSeaLidarSDK::openDev(int ID)
 	}
 	if (lidar->action >= ONLINE)
 		return true;
-
 
 	return false;
 }
@@ -182,7 +181,7 @@ bool BlueSeaLidarSDK::GetDevInfo(int ID, EEpromV101 *eepromv101)
 
 	if (lidar->action == FINISH)
 	{
-		if(strcmp(lidar->recv_cmd,"OK")==0)
+		if (strcmp(lidar->recv_cmd, "OK") == 0)
 		{
 			memcpy(eepromv101, &lidar->eepromv101, sizeof(EEpromV101));
 			return true;
@@ -190,12 +189,12 @@ bool BlueSeaLidarSDK::GetDevInfo(int ID, EEpromV101 *eepromv101)
 	}
 	return false;
 }
-bool BlueSeaLidarSDK::SetDevInfo(RunConfig *lidar, int num, char *cmd,int mode)
+bool BlueSeaLidarSDK::SetDevInfo(RunConfig *lidar, int num, char *cmd, int mode)
 {
 	lidar->mode = mode;
 	lidar->send_len = num;
-	memset(lidar->recv_cmd, 0,sizeof(lidar->recv_cmd));
-	lidar->recv_len=0;
+	memset(lidar->recv_cmd, 0, sizeof(lidar->recv_cmd));
+	lidar->recv_len = 0;
 	strcpy(lidar->send_cmd, cmd);
 	lidar->action = SETPARAM;
 	int index = 20;
@@ -206,17 +205,16 @@ bool BlueSeaLidarSDK::SetDevInfo(RunConfig *lidar, int num, char *cmd,int mode)
 	}
 	if (lidar->action == FINISH)
 	{
-		if (strcmp(lidar->recv_cmd, "OK")==0)
+		if (strcmp(lidar->recv_cmd, "OK") == 0)
 		{
-			printf("%s OK\n",lidar->send_cmd);
+			printf("%s OK\n", lidar->send_cmd);
 			return true;
 		}
-		else if (strcmp(lidar->recv_cmd, "NG")==0)
+		else if (strcmp(lidar->recv_cmd, "NG") == 0)
 		{
-			printf("%s NG\n",lidar->send_cmd);
+			printf("%s NG\n", lidar->send_cmd);
 			return false;
 		}
-			
 	}
 	return false;
 }
@@ -244,7 +242,6 @@ void *lidar_service(void *param)
 	BlueSeaLidarSDK::BlueSeaLidarSDK::getInstance()->getLidar(*ID)->webservice->run(*ID);
 	return SUCCESS;
 }
-
 
 // 打开本地服务
 bool BlueSeaLidarSDK::OpenLocalService(int ID)
@@ -297,10 +294,10 @@ bool BlueSeaLidarSDK::OpenHeartService()
 	if (m_checkservice == NULL)
 	{
 		m_checkservice = new LidarCheckService();
-
 	}
 	m_checkservice->run();
-	return true;;
+	return true;
+	;
 }
 
 bool BlueSeaLidarSDK::CloseHeartService()
@@ -308,7 +305,6 @@ bool BlueSeaLidarSDK::CloseHeartService()
 	m_checkservice->stop();
 	return true;
 }
-
 
 // 启停雷达测距
 bool BlueSeaLidarSDK::ControlDrv(int ID, int num, char *cmd)
@@ -337,12 +333,12 @@ bool BlueSeaLidarSDK::ControlDrv(int ID, int num, char *cmd)
 	}
 	if (lidar->action == FINISH)
 	{
-		printf("%s OK\n",lidar->send_cmd);
+		printf("%s OK\n", lidar->send_cmd);
 		return true;
 	}
-	else if(index==0&&strcmp(lidar->send_cmd,"LRESTH")==0)
+	else if (index == 0 && strcmp(lidar->send_cmd, "LRESTH") == 0)
 	{
-		printf("%s OK\n",lidar->send_cmd);
+		printf("%s OK\n", lidar->send_cmd);
 		return true;
 	}
 
@@ -367,7 +363,7 @@ bool BlueSeaLidarSDK::ZoneSection(int ID, char section)
 	{
 		char tmp[12] = {0};
 		sprintf(tmp, "LSAZN:%cH", section);
-		return SetDevInfo(lidar, strlen(tmp), tmp,S_PACK);
+		return SetDevInfo(lidar, strlen(tmp), tmp, S_PACK);
 	}
 
 	return false;
@@ -417,13 +413,13 @@ bool BlueSeaLidarSDK::SetDST(int ID, char *ip, int port)
 
 	char result[50] = {0};
 	// 对传入的格式校验
-	if (!BaseAPI::checkAndMerge(0, ip, (char*)"", (char*)"", port, result))
+	if (!BaseAPI::checkAndMerge(0, ip, (char *)"", (char *)"", port, result))
 	{
 		return false;
 	}
 	char tmp[64] = {0};
 	sprintf(tmp, "LSDST:%sH", result);
-	return SetDevInfo(lidar, strlen(tmp), tmp,S_PACK);
+	return SetDevInfo(lidar, strlen(tmp), tmp, S_PACK);
 }
 
 bool BlueSeaLidarSDK::SetRPM(int ID, int RPM)
@@ -446,8 +442,7 @@ bool BlueSeaLidarSDK::SetRPM(int ID, int RPM)
 	}
 	char cmd[16] = {0};
 	sprintf(cmd, "LSRPM:%dH", RPM);
-	return  SetDevInfo(lidar, strlen(cmd), cmd,C_PACK);
-	
+	return SetDevInfo(lidar, strlen(cmd), cmd, C_PACK);
 }
 
 bool BlueSeaLidarSDK::SetTFX(int ID, bool tfx)
@@ -465,7 +460,7 @@ bool BlueSeaLidarSDK::SetTFX(int ID, bool tfx)
 
 	char cmd[16] = {0};
 	sprintf(cmd, "LSTFX:%dH", tfx);
-	return SetDevInfo(lidar, strlen(cmd), cmd,S_PACK);
+	return SetDevInfo(lidar, strlen(cmd), cmd, S_PACK);
 }
 
 bool BlueSeaLidarSDK::SetDSW(int ID, bool dsw)
@@ -483,7 +478,7 @@ bool BlueSeaLidarSDK::SetDSW(int ID, bool dsw)
 
 	char cmd[16] = {0};
 	sprintf(cmd, "LFFF%dH", dsw);
-	return SetDevInfo(lidar, strlen(cmd), cmd,C_PACK);
+	return SetDevInfo(lidar, strlen(cmd), cmd, C_PACK);
 }
 
 bool BlueSeaLidarSDK::SetSMT(int ID, bool smt)
@@ -501,7 +496,7 @@ bool BlueSeaLidarSDK::SetSMT(int ID, bool smt)
 
 	char cmd[16] = {0};
 	sprintf(cmd, "LSSS%dH", smt);
-	return SetDevInfo(lidar, strlen(cmd), cmd,C_PACK);
+	return SetDevInfo(lidar, strlen(cmd), cmd, C_PACK);
 }
 
 bool BlueSeaLidarSDK::SetPST(int ID, int mode)
@@ -522,7 +517,7 @@ bool BlueSeaLidarSDK::SetPST(int ID, int mode)
 
 	char cmd[16] = {0};
 	sprintf(cmd, "LSPST:%dH", mode);
-	return SetDevInfo(lidar, strlen(cmd), cmd,S_PACK);
+	return SetDevInfo(lidar, strlen(cmd), cmd, S_PACK);
 }
 
 bool BlueSeaLidarSDK::SetDID(int ID, unsigned int did)
@@ -540,7 +535,58 @@ bool BlueSeaLidarSDK::SetDID(int ID, unsigned int did)
 
 	char cmd[16] = {0};
 	sprintf(cmd, "LSDID:%dH", did);
-	return SetDevInfo(lidar, strlen(cmd), cmd,S_PACK);
+	return SetDevInfo(lidar, strlen(cmd), cmd, S_PACK);
+}
+
+bool BlueSeaLidarSDK::SetNTP(int ID, char *ntp_ip, unsigned int port, bool enable)
+{
+	RunConfig *lidar = NULL;
+	for (unsigned int i = 0; i < m_lidars.size(); i++)
+	{
+		if (m_lidars.at(i)->ID == ID)
+		{
+			lidar = m_lidars.at(i);
+		}
+	}
+	if (lidar == NULL)
+		return false;
+
+	char cmd[64];
+	char ip_1[4];
+	char ip_2[4];
+	char ip_3[4];
+	char ip_4[4];
+	ip_1[3] = '\0';
+	ip_2[3] = '\0';
+	ip_3[3] = '\0';
+	ip_4[3] = '\0';
+
+	int idx[3];
+	int index = 0;
+	int ip_len = strlen(ntp_ip);
+	for (int i = 0; i < ip_len; i++)
+	{
+		if (ntp_ip[i] == '.')
+		{
+			idx[index] = i;
+			index++;
+		}
+	}
+	if (index != 3)
+	{
+		printf("ntp ip set error!");
+		return false;
+	}
+	else
+	{
+		memcpy(ip_1, &ntp_ip[0], idx[0]);
+		memcpy(ip_2, &ntp_ip[idx[0] + 1], idx[1] - idx[0] - 1);
+		memcpy(ip_3, &ntp_ip[idx[1] + 1], idx[2] - idx[1] - 1);
+		memcpy(ip_4, &ntp_ip[idx[2] + 1], ip_len - idx[2]);
+		sprintf(cmd, "LSNTP:%d,%03d.%03d.%03d.%03d,%05dH", enable, atoi(ip_1), atoi(ip_2), atoi(ip_3), atoi(ip_4), port);
+		return SetDevInfo(lidar, strlen(cmd), cmd, S_PACK);
+	}
+	return false;
 }
 
 std::vector<DevConnInfo> BlueSeaLidarSDK::getLidarsList()

@@ -84,6 +84,10 @@ struct RunScript
 	int alarm_msg;
 	int direction;
 	int ats;  //1udp  2vpc
+	//ntp
+	char ntp_ip[16];
+	int ntp_port;
+	int ntp_enable;
 };
 
 //运行配置 

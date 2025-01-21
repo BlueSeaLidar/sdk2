@@ -182,9 +182,9 @@ int main(int argc, char **argv)
 		//sleep(2);
 
 		//读取雷达的全局参数
-		EEpromV101 eepromv101;
-		if(lidarSDK->GetDevInfo(lidarID,&eepromv101))
-			CallBackMsg(3,&eepromv101,sizeof(EEpromV101));
+		// EEpromV101 eepromv101;
+		// if(lidarSDK->GetDevInfo(lidarID,&eepromv101))
+		// 	CallBackMsg(3,&eepromv101,sizeof(EEpromV101));
 		
 		//获取当前在线雷达信息(仅网络款)
 		// std::vector<DevConnInfo> dev =lidarSDK->getLidarsList();
@@ -230,6 +230,9 @@ int main(int argc, char **argv)
 		// //设置雷达编号(仅限网络款/防区款)(掉电保存)
 		// ret3=lidarSDK->SetDID(lidarID,999);
 		// printf("tfx:%d post:%d num:%d\n",ret,ret2,ret3);
+
+		//设置雷达的NTP上传信息
+		// lidarSDK->SetNTP(lidarID,"192.168.0.111",133,1);
 
 	}
 	while(1)

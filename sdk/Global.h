@@ -93,3 +93,5 @@ unsigned int stm32crc(unsigned int* ptr, unsigned int len);
     extern "C"  int change_baud(int fd, int baud);
     int Open_serial_port(const char* name, int port);
 #endif
+
+bool judgepcIPAddrIsValid(const char* pcIPAddr);
